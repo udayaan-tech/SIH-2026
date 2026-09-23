@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nyay-suraksha/backend/app"
 	"github.com/nyay-suraksha/backend/config"
 	"github.com/nyay-suraksha/backend/crypto"
 	"github.com/nyay-suraksha/backend/db"
@@ -22,6 +23,14 @@ func main() {
 	}
 	defer database.Close()
 	log.Println("✅ Database connected")
+
+	// Seed default demo officers and cases
+	if err := app.SeedDefaultUsers(database); err != nil {
+		log.Printf("⚠️  User seed warning: %v", err)
+	}
+	if err := app.SeedDefaultCases(database); err != nil {
+		log.Printf("⚠️  Case seed warning: %v", err)
+	}
 
 	// Initialize Merkle tree from existing leaves
 	merkleTree := crypto.NewMerkleTree()
@@ -87,12 +96,15 @@ func main() {
 	// Register your routes below this line
 	// ═══════════════════════════════════════════════════
 
-	// TODO: app.RegisterAuthRoutes(router, database, cfg)
-	// TODO: app.RegisterCaseRoutes(router, database, cfg)
-	// TODO: app.RegisterDocumentRoutes(router, database, cfg)
-	// TODO: app.RegisterCustodyRoutes(router, database, cfg)
-	// TODO: app.RegisterAuditRoutes(router, database, cfg)
-	// TODO: app.RegisterRedactionRoutes(router, database, cfg)
+	// Initialize Storage Manager (MinIO with local vault fallback)
+	app.InitStorage(cfg)
+
+	authHandler := app.RegisterAuthRoutes(router, database, cfg)
+	app.RegisterCaseRoutes(router, database, cfg, authHandler)
+	app.RegisterDocumentRoutes(router, database, cfg, authHandler)
+	app.RegisterCustodyRoutes(router, database, cfg, authHandler)
+	app.RegisterAuditRoutes(router, database, cfg, authHandler)
+	app.RegisterRedactionRoutes(router, database, cfg, authHandler)
 
 	// ═══════════════════════════════════════════════════
 	// START SERVER
