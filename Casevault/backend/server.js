@@ -81,7 +81,15 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
-// Fallback to index.html for client-side routing
+// API 404 handler
+app.use('/api', (req, res, next) => {
+  const error = new Error('API endpoint not found');
+  error.status = 404;
+  error.code = 'NOT_FOUND';
+  next(error);
+});
+
+// Fallback to index.html for client-side routing (only for non-API routes)
 app.get('*', (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
 });

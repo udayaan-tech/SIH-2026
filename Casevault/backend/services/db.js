@@ -286,7 +286,7 @@ function seedDatabase() {
   const rolePermMap = {
     'role-admin': ['perm-view', 'perm-upload', 'perm-download', 'perm-edit', 'perm-share', 'perm-verify', 'perm-audit', 'perm-admin', 'perm-transfer', 'perm-create-case'],
     'role-dh': ['perm-view', 'perm-upload', 'perm-download', 'perm-edit', 'perm-share', 'perm-verify', 'perm-audit', 'perm-transfer', 'perm-create-case'],
-    'role-io': ['perm-view', 'perm-upload', 'perm-download', 'perm-edit', 'perm-share', 'perm-verify', 'perm-transfer', 'perm-create-case'],
+    'role-io': ['perm-view', 'perm-upload', 'perm-download', 'perm-edit', 'perm-share', 'perm-verify', 'perm-audit', 'perm-admin', 'perm-transfer', 'perm-create-case'],
     'role-fo': ['perm-view', 'perm-upload', 'perm-download', 'perm-verify', 'perm-transfer'],
     'role-lo': ['perm-view', 'perm-download', 'perm-edit', 'perm-verify'],
     'role-aud': ['perm-view', 'perm-audit']
