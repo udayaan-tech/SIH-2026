@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -92,7 +95,31 @@ func (h *Handler) UploadEvidence(c *gin.Context) {
 		fmt.Printf("⚠️ Failed to store merkle leaf: %v\n", err)
 	}
 
-	// Step 5: Log to audit trail
+	// Step 5: Save file to local vault (Making it 100% REAL)
+	vaultDir := "vault"
+	if err := os.MkdirAll(vaultDir, 0755); err != nil {
+		fmt.Printf("⚠️ Failed to create vault directory: %v\n", err)
+	}
+
+	// Rewind the file pointer after hashing it
+	file.Seek(0, io.SeekStart)
+
+	// Save as vault/docID_hash.ext
+	ext := filepath.Ext(header.Filename)
+	savePath := filepath.Join(vaultDir, fmt.Sprintf("%s_%s%s", docID, hash[:8], ext))
+	
+	outFile, err := os.Create(savePath)
+	if err != nil {
+		fmt.Printf("⚠️ Failed to create file on disk: %v\n", err)
+	} else {
+		io.Copy(outFile, file)
+		outFile.Close()
+		
+		// Update the database to point to this local file (simulating MinIO)
+		h.db.Exec("UPDATE documents SET storage_key = $1 WHERE id = $2", savePath, docID)
+	}
+
+	// Step 6: Log to audit trail
 	h.logAudit(c, "EVIDENCE_UPLOADED", "document", docID, hash)
 
 	c.JSON(http.StatusOK, gin.H{
