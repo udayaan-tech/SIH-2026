@@ -38,7 +38,7 @@ func Load() *Config {
 		CORSOrigin: getEnv("CORS_ORIGIN", "http://localhost:3000"),
 
 		// Database
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/nyay_suraksha?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgrespassword@localhost:5432/nyay_suraksha?sslmode=disable"),
 
 		// MinIO
 		MinIOEndpoint:  getEnv("MINIO_ENDPOINT", "localhost:9000"),
