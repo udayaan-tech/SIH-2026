@@ -57,58 +57,57 @@ const DocViewerView = {
       <div class="split-viewer-grid">
         
         <!-- LEFT: Official Government Document Preview -->
-        <div class="doc-preview-pane">
-          <div class="doc-watermark">CONFIDENTIAL // NDIS</div>
-
-          <!-- Official Document Header Banner -->
-          <div style="border-bottom: 2px solid var(--gov-navy-dark); padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-              <div style="font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 1px; text-transform: uppercase;">
-                GOVERNMENT OF INDIA • NATIONAL DIGITAL INVESTIGATION SERVICES
-              </div>
-              <div style="font-size: 18px; font-weight: 800; color: var(--gov-navy-dark); margin-top: 2px;">
-                ${d.title}
-              </div>
-              <div style="font-size: 11px; color: var(--gov-text-muted); margin-top: 2px;">
-                Case Reference: <strong>${d.case_number || d.case_id}</strong> • Document Ref: <span class="font-mono">${d.document_number}</span>
-              </div>
-            </div>
-            <div style="text-align: right;">
-              <span class="badge badge-confidential" style="font-size: 12px;">${d.security_classification}</span>
-              <div style="font-size: 10px; color: var(--gov-text-muted); margin-top: 4px;">SECURE DIGITAL COPY</div>
-            </div>
+        <div class="doc-preview-pane" style="position: relative; overflow: hidden; background: #E2E8F0; display: flex; justify-content: center; align-items: center; padding: 20px;">
+          <!-- Diagonal Forensic Watermark -->
+          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; justify-content: center; align-items: center; opacity: 0.15; transform: rotate(-35deg); font-family: var(--font-mono); font-size: 24px; font-weight: 800; color: #000; white-space: nowrap; z-index: 10;">
+            CONFIDENTIAL | SI RAJESH SHARMA | #DL-4821 | 10.195.2.44
           </div>
 
-          <!-- Document Text Body (Simulating Real Evidentiary Document Content) -->
-          <div style="font-size: 13px; line-height: 1.8; color: var(--gov-text-primary); margin-bottom: 24px; min-height: 280px; white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, serif;">
-<strong>OFFICIAL EVIDENTIARY RECORD & FORENSIC ATTESTATION</strong>
-
-${d.ocr_extracted_text || 'No text extracted.'}
-
----
-<strong>STATUTORY ATTESTATION & CHAIN VERIFICATION:</strong>
-This document is cataloged within the National Digital Investigation Services repository under Section 65B of the Indian Evidence Act. The digital bitstream hash has been computed using NIST FIPS 180-4 standard SHA-256 and sealed with hardware token digital signature.
-          </div>
-
-          <!-- Official Stamp & Digital Signature Seal -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--gov-border-light); padding-top: 16px; margin-top: 20px;">
-            <div style="border: 2px solid var(--gov-navy-primary); border-radius: 4px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--gov-navy-dark);">
-              <span style="font-size: 20px;">⚖</span>
+          <!-- HTML5 Canvas Mockup -->
+          <div style="background: #FFFFFF; width: 100%; max-width: 600px; height: 100%; min-height: 800px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 40px; position: relative;">
+            <div style="position: absolute; top: 10px; right: 10px; font-size: 10px; color: #94A3B8; font-family: var(--font-mono);">Rendered via HTML5 Canvas</div>
+            
+            <!-- Official Document Header Banner -->
+            <div style="border-bottom: 2px solid var(--gov-navy-dark); padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-start;">
               <div>
-                <div style="font-weight: 800; text-transform: uppercase;">NDIS OFFICIAL VERIFIED</div>
-                <div style="font-size: 9px; color: var(--gov-text-muted);">Cryptographically Authenticated</div>
+                <div style="font-size: 11px; font-weight: 700; color: #64748B; letter-spacing: 1px; text-transform: uppercase;">
+                  GOVERNMENT OF INDIA • NATIONAL DIGITAL INVESTIGATION SERVICES
+                </div>
+                <div style="font-size: 18px; font-weight: 800; color: var(--gov-navy-dark); margin-top: 2px;">
+                  ${d.title}
+                </div>
+                <div style="font-size: 11px; color: var(--gov-text-muted); margin-top: 2px;">
+                  Case Reference: <strong>${d.case_number || d.case_id}</strong> • Document Ref: <span class="font-mono">${d.document_number}</span>
+                </div>
               </div>
             </div>
 
-            <div style="text-align: right; font-size: 11px;">
-              <div style="font-weight: 700;">Digitally Signed By:</div>
-              <div style="color: var(--gov-navy-primary); font-weight: 700;">Officer ${d.uploader_name || 'A. Sharma'}</div>
-              <div style="font-size: 10px; color: var(--gov-text-muted); font-family: var(--font-mono);">
-                ${d.digital_signature ? d.digital_signature.substring(0, 36) + '...' : 'NDIS-DSIG-ECDSA-P256-VALID'}
+            <!-- Document Text Body (Simulating Real Evidentiary Document Content) -->
+            <div style="font-size: 13px; line-height: 1.8; color: var(--gov-text-primary); margin-bottom: 24px; white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, serif;">
+  <strong>OFFICIAL EVIDENTIARY RECORD & FORENSIC ATTESTATION</strong>
+
+  ${d.ocr_extracted_text || 'No text extracted. Simulating content rendering...'}
+            </div>
+
+            <!-- Official Stamp & Digital Signature Seal -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid var(--gov-border-light); padding-top: 16px; margin-top: 20px;">
+              <div style="border: 2px solid var(--gov-navy-primary); border-radius: 4px; padding: 6px 12px; display: inline-flex; align-items: center; gap: 8px; font-size: 11px; color: var(--gov-navy-dark);">
+                <span style="font-size: 20px;">⚖</span>
+                <div>
+                  <div style="font-weight: 800; text-transform: uppercase;">NDIS OFFICIAL VERIFIED</div>
+                  <div style="font-size: 9px; color: var(--gov-text-muted);">Cryptographically Authenticated</div>
+                </div>
+              </div>
+
+              <div style="text-align: right; font-size: 11px;">
+                <div style="font-weight: 700;">Digitally Signed By:</div>
+                <div style="color: var(--gov-navy-primary); font-weight: 700;">Officer ${d.uploader_name || 'A. Sharma'}</div>
+                <div style="font-size: 10px; color: var(--gov-text-muted); font-family: var(--font-mono);">
+                  ${d.digital_signature ? d.digital_signature.substring(0, 36) + '...' : 'NDIS-DSIG-ECDSA-P256-VALID'}
+                </div>
               </div>
             </div>
           </div>
-
         </div>
 
         <!-- RIGHT: Metadata & Cryptographic Integrity Panel (Section 11) -->
@@ -141,6 +140,26 @@ This document is cataloged within the National Digital Investigation Services re
             <div class="info-item">
               <div class="info-label">Version</div>
               <div class="info-value"><span class="badge badge-secondary">${d.version}</span></div>
+            </div>
+          </div>
+
+          <!-- Sidebar panel fields (Section 11) -->
+          <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+            <div class="info-item">
+              <div class="info-label">Integrity Status</div>
+              <div class="info-value"><span class="badge ${this.tamperedState ? 'badge-review' : 'badge-verified'}">🛡 ${this.tamperedState ? 'INVALID (Mismatch)' : 'VERIFIED (SHA-256 match)'}</span></div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Merkle Proof</div>
+              <div class="info-value font-mono" style="font-size: 11px;">Leaf #42, Path: [L1→R2→L3→Root]</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Chain of Custody</div>
+              <div class="info-value">3 handoffs completed</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Classification</div>
+              <div class="info-value"><span class="badge badge-confidential">${d.security_classification || 'CONFIDENTIAL'}</span></div>
             </div>
           </div>
 
@@ -185,18 +204,18 @@ This document is cataloged within the National Digital Investigation Services re
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
               <button class="btn btn-primary btn-sm" onclick="DocViewerView.verifyIntegrity()">
-                [ Verify Integrity ]
+                Verify Integrity
               </button>
-              <button class="btn btn-secondary btn-sm" onclick="alert('Version history: v1 created on intake, v2 signed by Forensic Science Division.')">
-                [ View Versions ]
+              <button class="btn btn-secondary btn-sm" onclick="alert('Viewing AI Redacted Copy...')">
+                View Redacted Copy
               </button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-              <button class="btn btn-secondary btn-sm" onclick="alert('Access Request forwarded to Department Head.')">
-                [ Request Access ]
+              <button class="btn btn-saffron btn-sm" onclick="App.navigate('cert-view')">
+                Generate Sec 65B Certificate
               </button>
-              <button class="btn btn-secondary btn-sm" onclick="DocumentsView.downloadDoc('${d.id}')">
-                [ Download ]
+              <button class="btn btn-secondary btn-sm" onclick="App.navigate('evidence')">
+                Forward to Next Agency
               </button>
             </div>
           </div>

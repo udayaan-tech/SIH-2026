@@ -1,219 +1,148 @@
 /**
- * CASEVAULT — 15-Step Interactive Hackathon Demo Script Guide (Section 31)
- * Enables presenters and judges to step through the complete demonstration sequence seamlessly.
+ * CASEVAULT — Interactive Demo Guide
+ * Provides an overlay walkthrough for the 2-Minute Judge Demo.
  */
 const DemoGuide = {
-  currentStep: 1,
   steps: [
     {
-      num: 1,
-      title: 'Login as Lead Investigation Officer',
-      desc: 'Officer A. Sharma logs in to Economic Investigation Unit with MFA credentials.',
-      action: async () => {
-        await App.switchToOfficer('NDIS-IO-4102');
-        App.navigate('dashboard');
-      }
+      title: '1. Secure Authentication',
+      desc: 'Start by logging in using the smart card/badge credentials. Notice the NDIS ecosystem.',
+      action: () => App.navigate('login'),
+      target: null
     },
     {
-      num: 2,
-      title: 'Open CASE-2026-041',
-      desc: 'Navigate to Financial Fraud Investigation (Apex FinCorp Multi-Jurisdiction Shell Diversion).',
-      action: () => {
-        State.selectedCaseId = 'case-041';
-        App.navigate('case-detail');
-      }
+      title: '2. Officer Dashboard',
+      desc: 'The main dashboard provides an overview of open cases, integrity alerts, and blockchain network status.',
+      action: () => App.navigate('dashboard'),
+      target: null
     },
     {
-      num: 3,
-      title: 'Initiate Document Upload Flow',
-      desc: 'Open the government secure upload modal with 6-stage verification pipeline.',
+      title: '3. Register a New FIR (POCSO)',
+      desc: 'Let us register a new case. If the legal sections include POCSO or Section 64/65, the system automatically flags it for privacy.',
+      action: () => App.navigate('new-case'),
+      target: null
+    },
+    {
+      title: '4. Secure Evidence Upload',
+      desc: 'Now, upload CCTV evidence. Watch the 6-stage cryptographic pipeline: SHA-256 hash, Malware scan, AES-256 encryption, and Merkle tree append.',
       action: () => {
         App.navigate('documents');
-        setTimeout(() => DocumentsView.openUploadModal('case-041'), 200);
-      }
+        setTimeout(() => DocumentsView.openUploadModal(), 500);
+      },
+      target: null
     },
     {
-      num: 4,
-      title: 'Show AI Classification & Extraction',
-      desc: 'Inspect AI Document Intelligence with 96% confidence and extracted legal entities.',
+      title: '5. Anti-Leak Document Viewer',
+      desc: 'Evidence is rendered on an HTML5 canvas to prevent DOM-scraping. Notice the diagonal forensic watermark and the live Merkle Proof in the sidebar.',
+      action: () => App.navigate('doc-viewer'),
+      target: null
+    },
+    {
+      title: '6. Visual Custody Chain',
+      desc: 'Every time evidence changes hands (e.g., IO to Malkhana, or Malkhana to FSL), the handoff is cryptographically signed. Click on the timeline to see it.',
       action: () => {
-        App.navigate('ai-intel');
-      }
+        App.navigate('case-detail');
+        setTimeout(() => CaseDetailView.switchTab('timeline'), 300);
+      },
+      target: null
     },
     {
-      num: 5,
-      title: 'Cryptographic SHA-256 Hash Verification',
-      desc: 'Open split-screen Document Viewer and verify SHA-256 bitstream hash.',
+      title: '7. Red Team Tamper Attack',
+      desc: 'What if a hacker tries to modify the evidence directly in the database? Let us simulate a tamper attack.',
+      action: () => App.navigate('integrity-monitor'),
+      target: null
+    },
+    {
+      title: '8. Generate Sec 65B Certificate',
+      desc: 'Once ready for court, generate the court-admissible BSA 2023 Sec 65B Certificate. It contains the hash, Merkle root, and a verification QR code.',
+      action: () => App.navigate('cert-view'),
+      target: null
+    },
+    {
+      title: '9. Public QR Verification',
+      desc: 'A judge or lawyer can scan the QR code to verify the evidence without logging in. The zero-knowledge portal recomputes the Merkle path.',
       action: () => {
-        State.selectedDocId = 'doc-002';
-        App.navigate('doc-viewer');
-      }
-    },
-    {
-      num: 6,
-      title: 'Simulate Integrity Tamper Detection',
-      desc: 'Demonstrate immediate detection of corrupted or altered documents in the ledger.',
-      action: () => {
-        App.navigate('doc-viewer');
-        setTimeout(() => DocViewerView.simulateTamper(), 300);
-      }
-    },
-    {
-      num: 7,
-      title: 'Register Seized Digital Evidence',
-      desc: 'Open Evidence Vault and register newly seized digital storage media exhibit.',
-      action: () => {
-        App.navigate('evidence');
-        setTimeout(() => EvidenceView.openRegisterModal(), 200);
-      }
-    },
-    {
-      num: 8,
-      title: 'Transfer Custody to Forensic Officer',
-      desc: 'Hand over Exhibit EVD-2026-041-01 to R. Patel (Forensic Science Division).',
-      action: () => {
-        App.navigate('evidence');
-        setTimeout(() => EvidenceView.openTransferModal('ev-001'), 200);
-      }
-    },
-    {
-      num: 9,
-      title: 'Show Immutable Chain of Custody',
-      desc: 'Examine 5-stage Chain of Custody (Collected -> Transferred -> Received -> Examined -> Stored).',
-      action: () => {
-        State.selectedEvidenceId = 'ev-001';
-        App.navigate('evidence');
-      }
-    },
-    {
-      num: 10,
-      title: 'Search via AI Smart Search',
-      desc: 'Execute natural language query: "Find financial evidence related to Case 041".',
-      action: () => {
-        App.navigate('ai-search');
-        setTimeout(() => AISearchView.performQuickSearch('Find financial evidence related to Case 041'), 200);
-      }
-    },
-    {
-      num: 11,
-      title: 'Switch Role to Auditor (Read-Only)',
-      desc: 'Switch officer to K. Iyer (Auditor - Read Only) to demonstrate RBAC enforcement.',
-      action: async () => {
-        await App.switchToOfficer('NDIS-AUD-9904');
-        App.navigate('access-control');
-      }
-    },
-    {
-      num: 12,
-      title: 'Attempt Unauthorized Access (403 Demo)',
-      desc: 'Attempt to download restricted encrypted file without clearance. Triggers 403 Forbidden.',
-      action: () => {
-        AccessControlView.simulateUnauthorizedAccess();
-      }
-    },
-    {
-      num: 13,
-      title: 'Open Immutable Audit Trail',
-      desc: 'Inspect vigilance audit ledger. Verify that the denied attempt was recorded with checksum.',
-      action: async () => {
-        await App.switchToOfficer('NDIS-ADM-0001'); // Switch to Admin to view audit
-        App.navigate('audit-trail');
-      }
-    },
-    {
-      num: 14,
-      title: 'Export Statutory Compliance Report',
-      desc: 'Demonstrate CSV / printable tamper-evident audit report generation.',
-      action: () => {
-        App.navigate('audit-trail');
-        setTimeout(() => AuditTrailView.exportCsv(), 200);
-      }
-    },
-    {
-      num: 15,
-      title: 'Security Center Threat Intelligence',
-      desc: 'Inspect live MFA, AES-256 encryption status, brute force monitor, and integrity scan.',
-      action: () => {
-        App.navigate('security-center');
-      }
+        window.open('publicVerify.html', '_blank');
+      },
+      target: null
     }
   ],
+  currentStep: 0,
 
   init() {
-    this.renderBar();
+    this.renderOverlay();
   },
 
-  renderBar() {
-    let bar = document.getElementById('hackathon-demo-guide-bar');
-    if (!bar) {
-      bar = document.createElement('div');
-      bar.id = 'hackathon-demo-guide-bar';
-      bar.className = 'demo-guide-bar';
-      document.body.appendChild(bar);
+  renderOverlay() {
+    let overlay = document.getElementById('demo-guide-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'demo-guide-overlay';
+      overlay.style.position = 'fixed';
+      overlay.style.bottom = '20px';
+      overlay.style.right = '20px';
+      overlay.style.width = '300px';
+      overlay.style.backgroundColor = '#1E293B';
+      overlay.style.color = '#F8FAFC';
+      overlay.style.padding = '20px';
+      overlay.style.borderRadius = '8px';
+      overlay.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+      overlay.style.zIndex = '9999';
+      overlay.style.fontFamily = 'Inter, sans-serif';
+      document.body.appendChild(overlay);
+    }
+    this.updateContent();
+  },
+
+  updateContent() {
+    const step = this.steps[this.currentStep];
+    const overlay = document.getElementById('demo-guide-overlay');
+    
+    if (this.currentStep >= this.steps.length) {
+      overlay.style.display = 'none';
+      return;
     }
 
-    const step = this.steps[this.currentStep - 1];
-
-    bar.innerHTML = `
-      <div class="demo-guide-inner">
-        <div class="demo-guide-info">
-          <span class="demo-step-badge">Demo Script Step ${step.num} of 15</span>
-          <div>
-            <strong style="color: #FFFFFF;">${step.title}:</strong>
-            <span class="demo-step-text"> ${step.desc}</span>
-          </div>
-        </div>
-        <div class="demo-guide-controls">
-          <button class="btn btn-secondary btn-sm" onclick="DemoGuide.prevStep()" ${this.currentStep === 1 ? 'disabled style="opacity: 0.5"' : ''}>
-            ◀ Previous
-          </button>
-          <button class="btn btn-saffron btn-sm" onclick="DemoGuide.executeCurrentStep()">
-            ⚡ Run Step ${this.currentStep}
-          </button>
-          <button class="btn btn-primary btn-sm" onclick="DemoGuide.nextStep()" ${this.currentStep === 15 ? 'disabled style="opacity: 0.5"' : ''}>
-            Next Step ▶
-          </button>
-          <button class="btn btn-secondary btn-sm" style="background: none; border-color: rgba(255,255,255,0.3); color: #FFF;" onclick="DemoGuide.toggleMinimize()">
-            _
-          </button>
-        </div>
+    overlay.style.display = 'block';
+    overlay.innerHTML = \`
+      <div style="font-size: 11px; color: #94A3B8; text-transform: uppercase; font-weight: 700; margin-bottom: 8px;">
+        Demo Step \${this.currentStep + 1} of \${this.steps.length}
       </div>
-    `;
-  },
+      <div style="font-size: 14px; font-weight: 700; color: #FFF; margin-bottom: 8px;">
+        \${step.title}
+      </div>
+      <div style="font-size: 12px; color: #CBD5E1; margin-bottom: 16px; line-height: 1.5;">
+        \${step.desc}
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <button style="background: none; border: 1px solid #475569; color: #F8FAFC; padding: 6px 12px; border-radius: 4px; font-size: 11px; cursor: pointer;" onclick="DemoGuide.close()">Close</button>
+        \${this.currentStep < this.steps.length - 1 
+          ? \`<button style="background: #3B82F6; border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;" onclick="DemoGuide.next()">Next ➔</button>\` 
+          : \`<button style="background: #10B981; border: none; color: white; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;" onclick="DemoGuide.close()">Finish Demo ✓</button>\`
+        }
+      </div>
+    \`;
 
-  async executeCurrentStep() {
-    const step = this.steps[this.currentStep - 1];
-    if (step && step.action) {
-      await step.action();
+    // Execute the action for this step
+    if (step.action) {
+      step.action();
     }
   },
 
-  async nextStep() {
-    if (this.currentStep < this.steps.length) {
-      this.currentStep++;
-      this.renderBar();
-      await this.executeCurrentStep();
-    }
+  next() {
+    this.currentStep++;
+    this.updateContent();
   },
 
-  async prevStep() {
-    if (this.currentStep > 1) {
+  prev() {
+    if (this.currentStep > 0) {
       this.currentStep--;
-      this.renderBar();
-      await this.executeCurrentStep();
+      this.updateContent();
     }
   },
 
-  toggleMinimize() {
-    const bar = document.getElementById('hackathon-demo-guide-bar');
-    if (bar) {
-      bar.classList.toggle('minimized');
-      if (bar.classList.contains('minimized')) {
-        bar.style.transform = 'translateY(calc(100% - 32px))';
-      } else {
-        bar.style.transform = 'none';
-      }
-    }
+  close() {
+    document.getElementById('demo-guide-overlay').style.display = 'none';
   }
 };
 

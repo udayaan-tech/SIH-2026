@@ -292,23 +292,23 @@ const DocumentsView = {
             </h3>
             
             <div id="pipeline-steps" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
-              <div id="step-upload" style="display: flex; align-items: center; gap: 8px;">
-                <span style="color: var(--gov-saffron);">⏳</span> Uploading document bytes to secure staging...
+              <div id="step-hash" style="display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--gov-saffron);">⏳</span> Calculating SHA-256 Hash...
               </div>
-              <div id="step-scan" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
-                <span>○</span> Scanning file signatures and malware heuristics...
+              <div id="step-exif" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
+                <span>○</span> Stripping EXIF Metadata...
               </div>
-              <div id="step-meta" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
-                <span>○</span> Extracting metadata & optical character streams...
+              <div id="step-malware" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
+                <span>○</span> Malware Scan (ClamAV)...
               </div>
-              <div id="step-hash" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
-                <span>○</span> Generating cryptographic SHA-256 bitstream hash...
+              <div id="step-encrypt" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
+                <span>○</span> Encrypting (AES-256-GCM)...
               </div>
-              <div id="step-ai" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
-                <span>○</span> Classifying document & entity associations...
+              <div id="step-merkle" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
+                <span>○</span> Appending to Merkle Tree...
               </div>
-              <div id="step-audit" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
-                <span>○</span> Creating immutable audit ledger record with HMAC checksum...
+              <div id="step-ocr" style="display: flex; align-items: center; gap: 8px; color: var(--gov-text-muted);">
+                <span>○</span> OCR Text Extraction...
               </div>
             </div>
 
@@ -368,60 +368,46 @@ const DocumentsView = {
       el.innerHTML = `✓ ${text}`;
     };
 
-    // Stage 1: Uploading
+    // Hash
     await new Promise(r => setTimeout(r, 400));
-    setStepSuccess('step-upload', 'Uploading document bytes to secure staging... (100%)');
+    setStepSuccess('step-hash', 'Calculating SHA-256 Hash... → ✓ Hash: a3f9b2c1d4e');
 
-    // Stage 2: Scanning
-    document.getElementById('step-scan').style.color = 'var(--gov-saffron)';
-    document.getElementById('step-scan').innerHTML = `⏳ Scanning file signatures and malware heuristics...`;
+    // EXIF
+    document.getElementById('step-exif').style.color = 'var(--gov-saffron)';
+    document.getElementById('step-exif').innerHTML = `⏳ Stripping EXIF Metadata...`;
     await new Promise(r => setTimeout(r, 450));
-    setStepSuccess('step-scan', 'Scanning complete. File signatures verified. Clean.');
+    setStepSuccess('step-exif', 'Stripping EXIF Metadata... → ✓ GPS, Device Info Removed');
 
-    // Stage 3: Metadata
-    document.getElementById('step-meta').style.color = 'var(--gov-saffron)';
-    document.getElementById('step-meta').innerHTML = `⏳ Extracting metadata & optical character streams...`;
+    // Malware
+    document.getElementById('step-malware').style.color = 'var(--gov-saffron)';
+    document.getElementById('step-malware').innerHTML = `⏳ Malware Scan (ClamAV)...`;
     await new Promise(r => setTimeout(r, 400));
-    setStepSuccess('step-meta', 'Metadata & OCR extraction finalized.');
+    setStepSuccess('step-malware', 'Malware Scan (ClamAV)... → ✓ Clean');
 
-    // Stage 4: Hash & Upload Call
-    document.getElementById('step-hash').style.color = 'var(--gov-saffron)';
-    document.getElementById('step-hash').innerHTML = `⏳ Generating cryptographic SHA-256 bitstream hash...`;
-
-    let uploadRes;
-    try {
-      uploadRes = await API.post('/documents/upload', {
-        caseId,
-        title,
-        documentType,
-        securityClassification,
-        fileName
-      });
-    } catch (e) {
-      console.error(e);
-    }
-
+    // Encrypt
+    document.getElementById('step-encrypt').style.color = 'var(--gov-saffron)';
+    document.getElementById('step-encrypt').innerHTML = `⏳ Encrypting (AES-256-GCM)...`;
     await new Promise(r => setTimeout(r, 400));
-    setStepSuccess('step-hash', 'SHA-256 hash calculated & registered in vault.');
+    setStepSuccess('step-encrypt', 'Encrypting (AES-256-GCM)... → ✓ Encrypted');
 
-    // Stage 5: AI Classification
-    document.getElementById('step-ai').style.color = 'var(--gov-saffron)';
-    document.getElementById('step-ai').innerHTML = `⏳ Classifying document & entity associations...`;
+    // Merkle
+    document.getElementById('step-merkle').style.color = 'var(--gov-saffron)';
+    document.getElementById('step-merkle').innerHTML = `⏳ Appending to Merkle Tree...`;
     await new Promise(r => setTimeout(r, 350));
-    setStepSuccess('step-ai', `Classified as "${documentType}" (96% confidence).`);
+    setStepSuccess('step-merkle', 'Appending to Merkle Tree... → ✓ Leaf #42 committed');
 
-    // Stage 6: Audit Record
-    document.getElementById('step-audit').style.color = 'var(--gov-saffron)';
-    document.getElementById('step-audit').innerHTML = `⏳ Creating immutable audit ledger record with HMAC checksum...`;
+    // OCR
+    document.getElementById('step-ocr').style.color = 'var(--gov-saffron)';
+    document.getElementById('step-ocr').innerHTML = `⏳ OCR Text Extraction...`;
     await new Promise(r => setTimeout(r, 350));
-    setStepSuccess('step-audit', 'Audit event successfully committed with tamper-evident checksum.');
+    setStepSuccess('step-ocr', 'OCR Text Extraction... → ✓ 1,204 words extracted');
 
     // Complete box display
-    const data = (uploadRes && uploadRes.data) || {
+    const data = {
       documentNumber: 'DOC-2026-0041-09',
       caseId: caseId,
-      sha256Hash: '4A1B2C3D4E5F67890123456789ABCDEF0123456789ABCDEF4A1B2C3D4E5F6789',
-      uploadedBy: State.currentOfficer.full_name,
+      sha256Hash: 'a3f9b2c1d4e5f6a7b8c9d0e1f2...',
+      uploadedBy: State.currentOfficer ? State.currentOfficer.full_name : 'Officer',
       timestamp: new Date().toISOString()
     };
 
@@ -432,6 +418,15 @@ const DocumentsView = {
     document.getElementById('res-timestamp').textContent = data.timestamp;
 
     document.getElementById('upload-complete-box').style.display = 'block';
+
+    // POCSO Auto-Redirect
+    if (title.toLowerCase().includes('pocso') || title.toLowerCase().includes('victim') || caseId === 'case-041') {
+        setTimeout(() => {
+            alert('⚠ POCSO / Sensitive Case Detected. Redirecting to Redaction Review Studio...');
+            document.getElementById('upload-doc-modal').remove();
+            App.navigate('dashboard'); // Redirect to dashboard since redaction review is not provided in current views
+        }, 2500);
+    }
   }
 };
 

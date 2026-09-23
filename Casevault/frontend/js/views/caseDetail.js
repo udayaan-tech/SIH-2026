@@ -343,6 +343,90 @@ const CaseDetailView = {
           </div>
         `;
 
+      case 'timeline':
+        return `
+          <div class="gov-card">
+            <div class="gov-card-header">
+              <div class="gov-card-title">Visual Evidence Custody Pipeline</div>
+              <button class="btn btn-secondary btn-sm" onclick="App.navigate('evidence')">View Evidence Ledger</button>
+            </div>
+            <div class="gov-card-body" style="padding: 40px 20px;">
+              <div style="display: flex; justify-content: space-between; position: relative; margin-bottom: 30px;">
+                <!-- Connecting Line -->
+                <div style="position: absolute; top: 12px; left: 40px; right: 40px; height: 4px; background-color: var(--gov-border-light); z-index: 1;"></div>
+                <div style="position: absolute; top: 12px; left: 40px; width: 50%; height: 4px; background-color: var(--gov-navy-primary); z-index: 2;"></div>
+
+                <!-- Node 1 -->
+                <div style="position: relative; z-index: 3; text-align: center; width: 120px; cursor: pointer;" onclick="document.getElementById('tl-node-1').style.display = document.getElementById('tl-node-1').style.display === 'block' ? 'none' : 'block'">
+                  <div style="width: 28px; height: 28px; background-color: var(--gov-navy-primary); border-radius: 50%; border: 4px solid #fff; margin: 0 auto 10px;"></div>
+                  <div style="font-weight: 700; font-size: 13px; color: var(--gov-navy-dark);">Seized by IO</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">10:00 AM</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">SI Rajesh</div>
+                  
+                  <div id="tl-node-1" style="display: none; position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 220px; background: #fff; border: 1px solid var(--gov-border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 12px; text-align: left; border-radius: 4px; z-index: 10;">
+                    <div style="font-weight: 700; font-size: 11px; color: var(--gov-navy-primary); margin-bottom: 4px;">HANDOFF DETAILS</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Collected By:</strong> SI Rajesh (NDIS-IO-4102)</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Time (NTP):</strong> 2026-09-10 10:00:14 IST</div>
+                    <div style="font-size: 11px;"><strong>Hash:</strong> <span class="font-mono" style="color: var(--gov-green);">a3f9b2c...</span></div>
+                  </div>
+                </div>
+
+                <!-- Node 2 -->
+                <div style="position: relative; z-index: 3; text-align: center; width: 120px; cursor: pointer;" onclick="document.getElementById('tl-node-2').style.display = document.getElementById('tl-node-2').style.display === 'block' ? 'none' : 'block'">
+                  <div style="width: 28px; height: 28px; background-color: var(--gov-navy-primary); border-radius: 50%; border: 4px solid #fff; margin: 0 auto 10px;"></div>
+                  <div style="font-weight: 700; font-size: 13px; color: var(--gov-navy-dark);">Malkhana Vault</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">04:30 PM</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">HC Meena</div>
+                  
+                  <div id="tl-node-2" style="display: none; position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 220px; background: #fff; border: 1px solid var(--gov-border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 12px; text-align: left; border-radius: 4px; z-index: 10;">
+                    <div style="font-weight: 700; font-size: 11px; color: var(--gov-navy-primary); margin-bottom: 4px;">HANDOFF DETAILS</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Handed By:</strong> SI Rajesh (NDIS-IO-4102)</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Received By:</strong> HC Meena (NDIS-MK-112)</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Time (NTP):</strong> 2026-09-10 16:30:05 IST</div>
+                    <div style="font-size: 11px;"><strong>Hash:</strong> <span class="font-mono" style="color: var(--gov-green);">b7c8d9e...</span></div>
+                  </div>
+                </div>
+
+                <!-- Node 3 -->
+                <div style="position: relative; z-index: 3; text-align: center; width: 120px; cursor: pointer;" onclick="document.getElementById('tl-node-3').style.display = document.getElementById('tl-node-3').style.display === 'block' ? 'none' : 'block'">
+                  <div style="width: 28px; height: 28px; background-color: var(--gov-navy-primary); border-radius: 50%; border: 4px solid #fff; margin: 0 auto 10px;"></div>
+                  <div style="font-weight: 700; font-size: 13px; color: var(--gov-navy-dark);">FSL Lab Testing</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">Sep 3</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">Dr. Verma</div>
+                  
+                  <div id="tl-node-3" style="display: none; position: absolute; top: 80px; left: 50%; transform: translateX(-50%); width: 220px; background: #fff; border: 1px solid var(--gov-border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 12px; text-align: left; border-radius: 4px; z-index: 10;">
+                    <div style="font-weight: 700; font-size: 11px; color: var(--gov-navy-primary); margin-bottom: 4px;">HANDOFF DETAILS</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Handed By:</strong> HC Meena (NDIS-MK-112)</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Received By:</strong> Dr. Verma (NDIS-FSL-88)</div>
+                    <div style="font-size: 11px; margin-bottom: 4px;"><strong>Time (NTP):</strong> 2026-09-13 11:20:00 IST</div>
+                    <div style="font-size: 11px;"><strong>Hash:</strong> <span class="font-mono" style="color: var(--gov-green);">f1a2b3c...</span></div>
+                  </div>
+                </div>
+
+                <!-- Node 4 -->
+                <div style="position: relative; z-index: 3; text-align: center; width: 120px; cursor: pointer;" onclick="document.getElementById('tl-node-4').style.display = document.getElementById('tl-node-4').style.display === 'block' ? 'none' : 'block'">
+                  <div style="width: 28px; height: 28px; background-color: var(--gov-border); border-radius: 50%; border: 4px solid #fff; margin: 0 auto 10px;"></div>
+                  <div style="font-weight: 700; font-size: 13px; color: var(--gov-text-secondary);">Prosecutor Scrutiny</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">Sep 7</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">PP Sharma</div>
+                </div>
+
+                <!-- Node 5 -->
+                <div style="position: relative; z-index: 3; text-align: center; width: 120px; cursor: pointer;">
+                  <div style="width: 28px; height: 28px; background-color: var(--gov-border); border-radius: 50%; border: 4px solid #fff; margin: 0 auto 10px;"></div>
+                  <div style="font-weight: 700; font-size: 13px; color: var(--gov-text-secondary);">Court Admitted</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">Sep 10</div>
+                  <div style="font-size: 11px; color: var(--gov-text-muted);">Judge Reddy</div>
+                </div>
+
+              </div>
+              <div style="text-align: center; font-size: 12px; color: var(--gov-text-muted); margin-top: 50px;">
+                Click any completed node to view immutable cryptographic handoff details.
+              </div>
+            </div>
+          </div>
+        `;
+
       default:
         return `
           <div class="gov-card">
