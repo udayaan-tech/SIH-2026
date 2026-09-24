@@ -5,8 +5,9 @@ import "os"
 // Config holds all environment-driven configuration values.
 type Config struct {
 	// Server
-	Port       string
-	CORSOrigin string
+	Port        string
+	CORSOrigin  string
+	Environment string
 
 	// Database
 	DatabaseURL string
@@ -34,8 +35,9 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		// Server
-		Port:       getEnv("PORT", "8080"),
-		CORSOrigin: getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		Port:        getEnv("PORT", "8080"),
+		CORSOrigin:  getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		Environment: getEnv("ENV", "development"),
 
 		// Database
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgrespassword@localhost:5432/nyay_suraksha?sslmode=disable"),

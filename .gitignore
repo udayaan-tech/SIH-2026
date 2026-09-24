@@ -1,0 +1,19 @@
+# Binaries
+backend/nyay-backend
+nyay-backend
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Storage Vault
+backend/vault/
+vault/
+
+# Generated keys
+backend/keys/
+keys/
+
+# Logs & temp
+*.log
+.DS_Store

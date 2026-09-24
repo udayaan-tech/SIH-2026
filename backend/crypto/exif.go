@@ -3,8 +3,9 @@ package crypto
 import (
 	"bytes"
 	"fmt"
+	"image/jpeg"
 	"io"
-	
+
 	"github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
 )
@@ -13,49 +14,17 @@ import (
 // from JPEG images. This is critical for protecting victim locations and preventing
 // accidental data leaks from crime scene photos.
 func StripEXIF(imgData []byte) ([]byte, error) {
-	// 1. Search for EXIF data in the image
-	_, _, err := exif.SearchAndExtractExifWithBrowser(imgData)
+	// Re-encoding JPEG using Go's standard library cleanly strips all EXIF/APP1
+	// metadata segments while preserving visual image fidelity.
+	img, err := jpeg.Decode(bytes.NewReader(imgData))
 	if err != nil {
-		if err == exif.ErrNoExif {
-			// Image doesn't have EXIF data, return as-is
-			return imgData, nil
-		}
-		return nil, fmt.Errorf("error checking EXIF data: %w", err)
-	}
-
-	// 2. EXIF data exists. We need to create a new IFD builder with NO tags.
-	im, err := exifcommon.NewIfdMappingWithStandard()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create IFD mapping: %w", err)
-	}
-
-	// Create an empty EXIF block
-	ti := exif.NewTagIndex()
-	ib := exif.NewIfdBuilder(im, ti, exifcommon.IfdStandardIfdIdentity, exifcommon.EncodeDefaultByteOrder)
-	
-	// Generate the empty EXIF bytes
-	emptyExifBytes := make([]byte, 0)
-	emptyExifBuffer := bytes.NewBuffer(emptyExifBytes)
-	err = ib.Write(emptyExifBuffer)
-	if err != nil {
-		return nil, fmt.Errorf("failed to write empty EXIF block: %w", err)
-	}
-
-	// 3. Write the image back with the EXIF block removed/replaced
-	// For JPEG, we use the exif package's SetExif function to replace it with our empty block
-	var buf bytes.Buffer
-	mc, err := exifcommon.NewMediaContext(imgData)
-	if err != nil {
-		// If it fails to parse as a media context, fallback to just returning the image
+		// If not a standard JPEG or unparseable, return original data
 		return imgData, nil
 	}
 
-	if err := mc.SetExif(emptyExifBuffer.Bytes()); err != nil {
-		return nil, fmt.Errorf("failed to strip EXIF: %w", err)
-	}
-
-	if err := mc.Write(&buf); err != nil {
-		return nil, fmt.Errorf("failed to write sanitized image: %w", err)
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 95}); err != nil {
+		return nil, fmt.Errorf("failed to encode sanitized JPEG: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -74,12 +43,14 @@ func IsSanitized(imgData io.Reader) bool {
 		return err == exif.ErrNoExif
 	}
 
-	im, _ := exifcommon.NewIfdMappingWithStandard()
+	im, err := exifcommon.NewIfdMappingWithStandard()
+	if err != nil {
+		return true
+	}
 	ti := exif.NewTagIndex()
 	_, index, err := exif.Collect(im, ti, rawExif)
-	
 	if err != nil {
-		return true // Unparseable EXIF is treated as safe for our purposes
+		return true // Unparseable EXIF is treated as safe
 	}
 
 	// Check if GPS info IFD is present
