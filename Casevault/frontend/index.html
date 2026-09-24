@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CASEVAULT — Secure Digital Case & Document Management System | Government of India</title>
+  <meta name="description" content="Official digital case, document and evidence management platform for government law-enforcement, investigation agencies and legal authorities. Secure Every Document. Trace Every Action. Protect Every Case." />
+  <meta name="theme-color" content="#0B2545" />
+
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/gov-theme.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/accessibility.css" />
+</head>
+<body>
+
+  <!-- National Tricolor Top Ribbon Accent -->
+  <div class="gov-tricolor-stripe"></div>
+
+  <!-- 1. Government Utility Bar (Section 3 & 21) -->
+  <header class="gov-utility-bar">
+    <div class="gov-utility-inner">
+      <div class="gov-utility-left">
+        <span class="gov-prototype-tag">DEMO / PROTOTYPE PLATFORM</span>
+        <span class="gov-utility-divider">|</span>
+        <span style="font-weight: 600;">Government Digital Services</span>
+        <span class="gov-utility-divider">|</span>
+        <button class="gov-utility-item" onclick="App.toggleScreenReader()" title="Screen Reader Accessibility">
+          Screen Reader Access
+        </button>
+      </div>
+      <div class="gov-utility-right">
+        <!-- Accessibility Font Controls -->
+        <span style="font-size: 11px; color: #94A3B8;">Text Size:</span>
+        <button class="gov-utility-item" onclick="App.setFontSize('sm')" title="Small Text">A-</button>
+        <button class="gov-utility-item" onclick="App.setFontSize('md')" title="Normal Text">A</button>
+        <button class="gov-utility-item" onclick="App.setFontSize('lg')" title="Large Text">A+</button>
+        <span class="gov-utility-divider">|</span>
+        <button class="gov-utility-item" onclick="App.toggleHighContrast()" title="Toggle High Contrast">
+          ◐ Contrast
+        </button>
+        <span class="gov-utility-divider">|</span>
+        <button class="gov-utility-item" id="lang-toggle-btn" onclick="State.toggleLanguage()" title="Switch Language">
+          हिंदी | English
+        </button>
+        <span class="gov-utility-divider">|</span>
+        <button class="gov-utility-item" onclick="alert('Help Desk: NDIS Digital Support Line: 1800-11-NDIS / support@ndis.gov.in')">
+          Help
+        </button>
+        <button class="gov-utility-item" onclick="alert('National Digital Investigation Services, Central Complex, New Delhi - 110001')">
+          Contact
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. Main Official Header (Section 3) -->
+  <div class="gov-main-header">
+    <div class="gov-header-inner">
+      
+      <!-- LEFT: Government Emblem & Institutional Identity -->
+      <div class="gov-identity-group" onclick="App.navigate('dashboard')" style="cursor: pointer;">
+        <div class="gov-emblem-placeholder">
+          <span class="gov-emblem-icon">🏛</span>
+          <span class="gov-emblem-text">SERVICES</span>
+        </div>
+        <div class="gov-titles">
+          <div class="gov-org-name">National Digital Investigation Services</div>
+          <div class="gov-dept-name">Ministry of Home & Legal Affairs Division</div>
+          <div class="gov-app-name">
+            <strong>CASEVAULT</strong> — Secure Digital Case & Document Management System
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Officer Profile & Session Controls -->
+      <div class="gov-header-actions" id="gov-header-actions-panel">
+        <div class="officer-badge-card">
+          <div class="officer-avatar" id="header-officer-avatar">A</div>
+          <div class="officer-meta">
+            <div class="officer-name" id="header-officer-name">A. Sharma</div>
+            <div class="officer-dept-id" id="header-officer-dept">NDIS-IO-4102 • EIU</div>
+            <!-- Live Persona Switcher for Quick RBAC Verification -->
+            <select id="header-role-switcher" class="role-switcher-select" onchange="App.switchToOfficer(this.value)">
+              <!-- Options populated dynamically by App -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Notification Bell with Count Badge -->
+        <button class="header-action-btn" onclick="App.toggleNotifDrawer()" title="View Notifications & Security Advisories">
+          🔔
+          <span class="badge-count" id="notif-badge-count">3</span>
+        </button>
+
+        <!-- Logout Action -->
+        <button class="header-action-btn" onclick="App.navigate('login')" title="Log Out Session">
+          ⎋
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3. Official Navigation Bar (Section 3) -->
+  <nav class="gov-nav-bar" id="gov-navigation-bar">
+    <div class="gov-nav-inner">
+      <a href="#dashboard" class="gov-nav-link active" data-view="dashboard">Dashboard</a>
+      <a href="#cases" class="gov-nav-link" data-view="cases">Cases</a>
+      <a href="#documents" class="gov-nav-link" data-view="documents">Documents</a>
+      <a href="#evidence" class="gov-nav-link" data-view="evidence">Evidence Vault</a>
+      <a href="#ai-search" class="gov-nav-link" data-view="ai-search">AI Search</a>
+      <a href="#ai-intel" class="gov-nav-link" data-view="ai-intel">AI Intelligence</a>
+      <a href="#audit-trail" class="gov-nav-link" data-view="audit-trail">Audit Trail</a>
+      <a href="#access-control" class="gov-nav-link" data-view="access-control">Access Control</a>
+      <a href="#reports" class="gov-nav-link" data-view="reports">Reports</a>
+      <a href="#security-center" class="gov-nav-link" data-view="security-center">Security</a>
+      <a href="#api-docs" class="gov-nav-link" data-view="api-docs">API Docs</a>
+    </div>
+  </nav>
+
+  <!-- 4. Dynamic Main Content Area -->
+  <main class="gov-main-content" id="main-content-container">
+    <!-- View rendered by App.navigate() -->
+  </main>
+
+  <!-- 5. Government Standard Footer -->
+  <footer class="gov-footer">
+    <div class="gov-footer-inner">
+      <div class="gov-footer-top">
+        <div>
+          <div class="gov-footer-heading">CASEVAULT Platform</div>
+          <p style="font-size: 12px; color: #94A3B8; line-height: 1.6; margin-bottom: 8px;">
+            National Digital Investigation Services (NDIS). A production-quality prototype platform engineered for lawful evidentiary governance, digital forensics, and tamper-evident custody tracking.
+          </p>
+          <div style="font-size: 11px; color: #64748B;">
+            Complies with Section 65B of Indian Evidence Act & IT Act 2000.
+          </div>
+        </div>
+        <div>
+          <div class="gov-footer-heading">Platform Modules</div>
+          <ul class="gov-footer-links">
+            <li><a href="#cases" onclick="App.navigate('cases')">Case Management</a></li>
+            <li><a href="#documents" onclick="App.navigate('documents')">SHA-256 Vault</a></li>
+            <li><a href="#evidence" onclick="App.navigate('evidence')">Chain of Custody</a></li>
+            <li><a href="#ai-search" onclick="App.navigate('ai-search')">AI Smart Search</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="gov-footer-heading">Compliance & Security</div>
+          <ul class="gov-footer-links">
+            <li><a href="#audit-trail" onclick="App.navigate('audit-trail')">Statutory Audit Trail</a></li>
+            <li><a href="#access-control" onclick="App.navigate('access-control')">Zero-Trust RBAC</a></li>
+            <li><a href="#security-center" onclick="App.navigate('security-center')">Security Posture</a></li>
+            <li><a href="#api-docs" onclick="App.navigate('api-docs')">API v1 Documentation</a></li>
+          </ul>
+        </div>
+        <div>
+          <div class="gov-footer-heading">Authorized Portals</div>
+          <ul class="gov-footer-links">
+            <li><a href="javascript:void(0)" onclick="alert('Direct NIC National Cloud Gateway')">NIC Cloud Services</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Digital India Public Infrastructure Portal')">Digital India Services</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('Inter-operable Criminal Justice System (ICJS)')">ICJS National Grid</a></li>
+            <li><a href="javascript:void(0)" onclick="alert('National Cyber Crime Reporting Portal')">Cyber Crime Portal</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="gov-footer-bottom">
+        <div>
+          © 2026 National Digital Investigation Services (NDIS), Government of India. Prototype Demonstration Platform.
+        </div>
+        <div>
+          Last Updated: 23 September 2026 | FIPS 180-4 SHA-256 Verified
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Frontend JavaScript Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/demoGuide.js"></script>
+
+  <!-- View Controllers -->
+  <script src="js/views/login.js"></script>
+  <script src="js/views/dashboard.js"></script>
+  <script src="js/views/cases.js"></script>
+  <script src="js/views/newCase.js"></script>
+  <script src="js/views/caseDetail.js"></script>
+  <script src="js/views/documents.js"></script>
+  <script src="js/views/docViewer.js"></script>
+  <script src="js/views/certView.js"></script>
+  <script src="js/views/evidence.js"></script>
+  <script src="js/views/aiIntel.js"></script>
+  <script src="js/views/aiSearch.js"></script>
+  <script src="js/views/accessControl.js"></script>
+  <script src="js/views/auditTrail.js"></script>
+  <script src="js/views/integrityMonitor.js"></script>
+  <script src="js/views/adminUsers.js"></script>
+  <script src="js/views/securityCenter.js"></script>
+  <script src="js/views/reports.js"></script>
+  <script src="js/views/apiDocsView.js"></script>
+
+  <!-- Application Controller -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
