@@ -36,7 +36,7 @@ func Load() *Config {
 	return &Config{
 		// Server
 		Port:        getEnv("PORT", "8080"),
-		CORSOrigin:  getEnv("CORS_ORIGIN", "http://localhost:3000"),
+		CORSOrigin:  getEnv("CORS_ORIGIN", "http://localhost:3001"), // Teammate put frontend on 3001!
 		Environment: getEnv("ENV", "development"),
 
 		// Database

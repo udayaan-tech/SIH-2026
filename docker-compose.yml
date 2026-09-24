@@ -41,7 +41,7 @@ services:
   # Stores the actual encrypted evidence files
   # ═══════════════════════════════════════════════
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: nyay_suraksha_storage
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -54,21 +54,7 @@ services:
       - minio_data:/data
     restart: unless-stopped
 
-  # ═══════════════════════════════════════════════
-  # 4. MinIO Setup — Auto-create bucket
-  # ═══════════════════════════════════════════════
-  minio-setup:
-    image: minio/mc
-    container_name: nyay_suraksha_storage_setup
-    depends_on:
-      - minio
-    entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
-      /usr/bin/mc mb myminio/evidence-vault --ignore-existing;
-      /usr/bin/mc policy set public myminio/evidence-vault;
-      exit 0;
-      "
+
 
 volumes:
   postgres_data:
