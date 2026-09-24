@@ -60,17 +60,24 @@ func main() {
 
 	// CORS middleware — allows frontend to connect
 	router.Use(func(c *gin.Context) {
-		origin := cfg.CORSOrigin
-		// F-041: Block wildcard CORS in production
-		if origin == "*" && cfg.Environment == "production" {
-			log.Println("⚠️  CORS wildcard blocked in production — rejecting cross-origin request")
-			origin = ""
+		origin := c.Request.Header.Get("Origin")
+		if origin == "" {
+			origin = cfg.CORSOrigin
+		}
+		// F-041: Block wildcard CORS or unauthorized origins in production
+		if cfg.Environment == "production" {
+			if cfg.CORSOrigin == "*" {
+				log.Println("⚠️  CORS wildcard blocked in production — rejecting cross-origin request")
+				origin = ""
+			} else if origin != cfg.CORSOrigin {
+				origin = cfg.CORSOrigin
+			}
 		}
 		if origin != "" {
 			c.Header("Access-Control-Allow-Origin", origin)
 		}
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept")
 		c.Header("Access-Control-Allow-Credentials", "true")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)

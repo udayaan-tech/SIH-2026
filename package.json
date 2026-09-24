@@ -1,0 +1,30 @@
+{
+  "name": "casevault",
+  "version": "1.0.0",
+  "description": "CASEVAULT — Secure Digital Case & Document Management System for Government Law Enforcement Agencies",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "concurrently \"npm start\" \"cd frontend-next && npm run dev\"",
+    "dev:all": "concurrently \"npm start\" \"cd frontend-next && npm run dev\""
+  },
+  "keywords": [
+    "case-management",
+    "document-management",
+    "government-portal",
+    "evidence-vault",
+    "sha-256",
+    "chain-of-custody",
+    "zero-trust"
+  ],
+  "author": "National Digital Investigation Services",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
