@@ -55,9 +55,9 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="page-actions" style={{ gap: '12px' }}>
-            <button className="btn btn-secondary" onClick={() => router.push('/security-center')}>
+            <div className="badge badge-active" style={{ fontSize: '13px', padding: '6px 12px', cursor: 'pointer' }} onClick={() => router.push('/security-center')} role="status">
               System Status: SECURE
-            </button>
+            </div>
             <button className="btn btn-primary" onClick={() => router.push('/cases')}>
               <i className="fa-solid fa-plus" style={{ marginRight: '6px' }}></i> Manage Cases
             </button>
@@ -72,7 +72,7 @@ export default function DashboardPage() {
           padding: '12px 16px', 
           display: 'flex', 
           flexWrap: 'wrap', 
-          gap: '24px', 
+          gap: '16px', 
           fontSize: '13px', 
           color: 'var(--gov-text-secondary)',
         }}>
@@ -86,7 +86,7 @@ export default function DashboardPage() {
             <span>Dept:</span> <strong style={{ color: 'var(--gov-text-primary)' }}>{currentOfficer.department_name || 'Economic Investigation Unit'}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>Clearance:</span> <span className="badge badge-review">TIER-1 RESTRICTED</span>
+            <span>Clearance:</span> <span className="badge badge-review">Tier-1 Restricted</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>MFA:</span> <span style={{ color: 'var(--status-active)', fontWeight: 700 }}><i className="fa-solid fa-check" style={{ marginRight: '4px' }}></i> ACTIVE</span>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
               <i className="fa-solid fa-folder-open" style={{ color: 'var(--gov-navy-light)' }}></i> Priority Investigation Cases
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => router.push('/cases')}>
-              View All Cases (10)
+              View All Cases (10) <i className="fa-solid fa-arrow-right" style={{ marginLeft: '6px' }}></i>
             </button>
           </div>
           <div className="table-responsive">
@@ -155,7 +155,7 @@ export default function DashboardPage() {
                   <th>Department</th>
                   <th>Lead Officer</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th style={{ textAlign: 'right' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -172,9 +172,9 @@ export default function DashboardPage() {
                       <td>{c.department_name}</td>
                       <td>{c.lead_officer_name}</td>
                       <td><span className="badge badge-active">{c.status}</span></td>
-                      <td>
+                      <td style={{ textAlign: 'right' }}>
                         <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/cases/${c.id}`)}>
-                          Open Workspace <i className="fa-solid fa-arrow-right" style={{ marginLeft: '4px' }}></i>
+                          Open Case
                         </button>
                       </td>
                     </tr>
@@ -189,12 +189,12 @@ export default function DashboardPage() {
         <div>
           <div className="gov-card" style={{ marginBottom: '20px' }}>
             <div className="gov-card-header" style={{ backgroundColor: 'var(--gov-saffron-light)' }}>
-              <div className="gov-card-title" style={{ color: '#92400E' }}>
+              <div className="gov-card-title" style={{ color: 'var(--status-review)' }}>
                 <i className="fa-solid fa-triangle-exclamation"></i> Pending Evidentiary Reviews
               </div>
             </div>
             <div className="gov-card-body" style={{ padding: '12px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #FCD34D', borderLeft: '4px solid var(--gov-saffron)', padding: '10px', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <strong style={{ fontSize: '13px' }}>ChargeSheet_v2.pdf</strong>
@@ -203,7 +203,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: '11px', color: 'var(--gov-text-muted)', margin: '3px 0' }}>
                     CASE-2026-041 • Uploaded by N. Singh (Legal Dept)
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                     <button className="btn btn-primary btn-sm" onClick={() => router.push('/documents/doc-003')}>Verify SHA-256</button>
                     <button className="btn btn-secondary btn-sm" onClick={() => router.push('/cases/case-041')}>Open Case</button>
                   </div>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: '11px', color: 'var(--gov-text-muted)', margin: '3px 0' }}>
                     CASE-2026-041 • Digital bitstream signature valid
                   </div>
-                  <button className="btn btn-secondary btn-sm" style={{ marginTop: '6px' }} onClick={() => router.push('/documents/doc-002')}>
+                  <button className="btn btn-primary btn-sm" style={{ marginTop: '12px' }} onClick={() => router.push('/documents/doc-002')}>
                     Inspect Ledger
                   </button>
                 </div>

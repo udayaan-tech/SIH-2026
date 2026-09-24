@@ -43,7 +43,7 @@
   
   /* Layout */
   --header-height: 84px;
-  --utility-height: 36px;
+  --utility-height: 44px;
   --nav-height: 54px; /* Slightly taller nav for breathing room */
   --max-width: 1440px;
   --radius-sm: 16px; /* Rounder modern corners */
@@ -143,7 +143,7 @@ a:hover {
 .gov-prototype-tag {
   background-color: var(--gov-saffron);
   color: #FFFFFF;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   padding: 4px 8px;
   border-radius: var(--radius-lg);
@@ -349,7 +349,7 @@ a:hover {
   color: var(--gov-text-secondary);
   font-size: 13.5px;
   font-weight: 500;
-  padding: 16px 18px;
+  padding: 16px 24px;
   display: inline-flex;
   align-items: center;
   gap: 8px;

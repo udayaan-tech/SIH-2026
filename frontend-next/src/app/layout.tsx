@@ -33,20 +33,19 @@ function GovShell({ children }: { children: React.ReactNode }) {
               Screen Reader Access
             </button>
           </div>
-          <div className="gov-utility-right">
-            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Text Size:</span>
-            <button className="gov-utility-item" onClick={() => applyFontSize('sm')} title="Small Text">A-</button>
-            <button className="gov-utility-item" onClick={() => applyFontSize('md')} title="Normal Text">A</button>
-            <button className="gov-utility-item" onClick={() => applyFontSize('lg')} title="Large Text">A+</button>
-            <span className="gov-utility-divider">|</span>
+          <div className="gov-utility-right" style={{ gap: '16px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--gov-text-muted)' }}>Text Size:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button className="gov-utility-item" onClick={() => applyFontSize('sm')} title="Small Text">A-</button>
+              <button className="gov-utility-item" onClick={() => applyFontSize('md')} title="Normal Text">A</button>
+              <button className="gov-utility-item" onClick={() => applyFontSize('lg')} title="Large Text">A+</button>
+            </div>
             <button className="gov-utility-item" onClick={toggleHighContrast} title="Toggle High Contrast">
               <i className="fa-solid fa-circle-half-stroke" style={{ marginRight: '4px' }}></i> Contrast
             </button>
-            <span className="gov-utility-divider">|</span>
             <button className="gov-utility-item" onClick={toggleLanguage} title="Switch Language">
               हिंदी | English
             </button>
-            <span className="gov-utility-divider">|</span>
             <button className="gov-utility-item" onClick={() => (window as any).startDemoGuide?.()} title="Start Interactive Demo">
               Help
             </button>
@@ -77,15 +76,11 @@ function GovShell({ children }: { children: React.ReactNode }) {
             <div className="officer-badge-card">
               <div className="officer-avatar">{currentOfficer?.full_name?.charAt(0) || 'A'}</div>
               <div className="officer-meta">
-                <div className="officer-name">{currentOfficer?.full_name || 'A. Sharma'}</div>
+                <div className="officer-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  {currentOfficer?.full_name || 'A. Sharma'}
+                  <i className="fa-solid fa-caret-down" style={{ fontSize: '10px', color: 'var(--gov-text-muted)' }}></i>
+                </div>
                 <div className="officer-dept-id">{currentOfficer?.officer_id} • {currentOfficer?.department}</div>
-                <select className="role-switcher-select" value={currentOfficer?.officer_id || ''} onChange={(e) => switchToOfficer(e.target.value)}>
-                  {officers.map(o => (
-                    <option key={o.officer_id} value={o.officer_id}>
-                      {o.full_name} ({o.role_id})
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
@@ -104,15 +99,11 @@ function GovShell({ children }: { children: React.ReactNode }) {
         <div className="gov-nav-inner">
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/dashboard'); }} className={`gov-nav-link ${pathname === '/dashboard' ? 'active' : ''}`}>Dashboard</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/cases'); }} className={`gov-nav-link ${pathname.startsWith('/cases') ? 'active' : ''}`}>Cases</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/documents'); }} className={`gov-nav-link ${pathname.startsWith('/documents') && !pathname.includes('cert') ? 'active' : ''}`}>Documents</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/evidence'); }} className={`gov-nav-link ${pathname.startsWith('/evidence') ? 'active' : ''}`}>Evidence Vault</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/ai-search'); }} className={`gov-nav-link ${pathname.startsWith('/ai-search') ? 'active' : ''}`}>AI Search</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/ai-intel'); }} className={`gov-nav-link ${pathname.startsWith('/ai-intel') ? 'active' : ''}`}>AI Intelligence</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/audit-trail'); }} className={`gov-nav-link ${pathname.startsWith('/audit-trail') ? 'active' : ''}`}>Audit Trail</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/access-control'); }} className={`gov-nav-link ${pathname.startsWith('/access-control') ? 'active' : ''}`}>Access Control</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/documents'); }} className={`gov-nav-link ${pathname.startsWith('/documents') && !pathname.includes('cert') ? 'active' : ''}`}>Vault</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/evidence'); }} className={`gov-nav-link ${pathname.startsWith('/evidence') ? 'active' : ''}`}>Evidence</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/ai-search'); }} className={`gov-nav-link ${pathname.startsWith('/ai-') ? 'active' : ''}`}>AI Hub</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/reports'); }} className={`gov-nav-link ${pathname.startsWith('/reports') ? 'active' : ''}`}>Reports</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/security-center'); }} className={`gov-nav-link ${pathname.startsWith('/security-center') ? 'active' : ''}`}>Security</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/api-docs'); }} className={`gov-nav-link ${pathname.startsWith('/api-docs') ? 'active' : ''}`}>API Docs</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/security-center'); }} className={`gov-nav-link ${['/security-center', '/audit-trail', '/access-control', '/api-docs'].some(p => pathname.startsWith(p)) ? 'active' : ''}`}>System Admin</a>
         </div>
       </nav>
 
