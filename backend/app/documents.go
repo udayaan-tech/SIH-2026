@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -205,7 +206,7 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to list documents: %v", err),
+			"error":   "Failed to list documents. Please contact support.",
 		})
 		return
 	}
@@ -231,9 +232,14 @@ func (h *DocumentHandler) ListDocuments(c *gin.Context) {
 			&d.CreatedAt,
 		)
 		if err != nil {
+			log.Printf("⚠️ Error scanning document row: %v", err)
 			continue
 		}
 		docs = append(docs, d)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("⚠️ Error iterating document rows: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -266,7 +272,7 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Access validation check failed: %v", err),
+			"error":   "Access validation check failed",
 		})
 		return
 	}
@@ -319,7 +325,7 @@ func (h *DocumentHandler) GetDocument(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to load document: %v", err),
+			"error":   "Failed to load document",
 		})
 		return
 	}
@@ -341,7 +347,7 @@ func (h *DocumentHandler) DownloadDocument(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Access validation check failed: %v", err),
+			"error":   "Access validation check failed",
 		})
 		return
 	}
@@ -381,7 +387,7 @@ func (h *DocumentHandler) DownloadDocument(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to retrieve file from vault: %v", err),
+			"error":   "Failed to retrieve file from vault",
 		})
 		return
 	}
@@ -399,10 +405,9 @@ func (h *DocumentHandler) DownloadDocument(c *gin.Context) {
 		actorID = fmt.Sprintf("%v", callerID)
 	}
 
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'DOCUMENT_DOWNLOADED', 'DOCUMENT', $3, $4, $5)
-	`, nilIfEmptyString(actorID), actorBadge, docID, fmt.Sprintf(`{"title":"%s"}`, title), c.ClientIP())
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	docAudit, _ := json.Marshal(map[string]interface{}{"title": title})
+	_ = RecordAuditEvent(h.db, actorID, actorBadge, "DOCUMENT_DOWNLOADED", "DOCUMENT", docID, string(docAudit), c.ClientIP())
 
 	// Support HTTP Range Requests (essential for CCTV scrubbing and video playback in court)
 	if seeker, ok := reader.(io.ReadSeeker); ok {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/nyay-suraksha/backend/app"
 	"github.com/nyay-suraksha/backend/config"
 )
 
@@ -60,7 +61,7 @@ func (h *Handler) UploadEvidence(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to compute hash: %v", err),
+			"error":   "Failed to compute hash of uploaded evidence",
 		})
 		return
 	}
@@ -80,7 +81,7 @@ func (h *Handler) UploadEvidence(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to store document: %v", err),
+			"error":   "Failed to record evidence document",
 		})
 		return
 	}
@@ -161,7 +162,7 @@ func (h *Handler) VerifyIntegrity(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Database error: %v", err),
+			"error":   "Database error occurred during verification",
 		})
 		return
 	}
@@ -364,7 +365,7 @@ func (h *Handler) GetMerkleProof(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to generate proof: %v", err),
+			"error":   "Failed to generate cryptographic proof",
 		})
 		return
 	}
@@ -390,16 +391,19 @@ func (h *Handler) GetMerkleProof(c *gin.Context) {
 // HELPERS
 // ═══════════════════════════════════════════════
 
-// logAudit writes an append-only audit event to the database.
+// logAudit writes an append-only audit event to the database with cryptographic hash chaining
 func (h *Handler) logAudit(c *gin.Context, action, targetType, targetID, hashSnapshot string) {
 	ip := c.ClientIP()
-	_, err := h.db.Exec(`
-		INSERT INTO audit_events (action, target_type, target_id, hash_snapshot, ip_address)
-		VALUES ($1, $2, $3, $4, $5)
-	`, action, targetType, targetID, hashSnapshot, ip)
-	if err != nil {
-		fmt.Printf("⚠️ Audit log failed: %v\n", err)
+	actorID := ""
+	actorBadge := ""
+	if idVal, exists := c.Get("user_id"); exists {
+		actorID = fmt.Sprintf("%v", idVal)
 	}
+	if badgeVal, exists := c.Get("badge_id"); exists {
+		actorBadge = fmt.Sprintf("%v", badgeVal)
+	}
+	details := fmt.Sprintf(`{"evidence_hash":"%s"}`, hashSnapshot)
+	_ = app.RecordAuditEvent(h.db, actorID, actorBadge, action, targetType, targetID, details, ip)
 }
 
 // tamperHash flips a random byte in a hex-encoded hash to simulate tampering.

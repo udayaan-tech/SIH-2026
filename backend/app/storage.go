@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,6 +25,9 @@ import (
 
 // Magic header for AES-256-GCM encrypted evidence files at rest
 var encHeaderMagic = []byte("NYAY_ENC_V1")
+
+// MaxEvidenceFileSize is the maximum allowed evidence file upload size (500 MB) — F-031
+const MaxEvidenceFileSize = 500 * 1024 * 1024
 
 // ReadSeekCloser combines io.Reader, io.Seeker, and io.Closer
 type ReadSeekCloser interface {
@@ -56,7 +60,8 @@ var GlobalStorage *StorageManager
 // InitStorage initializes the storage manager
 func InitStorage(cfg *config.Config) *StorageManager {
 	vaultDir := "vault"
-	if err := os.MkdirAll(vaultDir, 0755); err != nil {
+	// F-035: Evidence vault directory must be owner-only accessible (0700, not 0755)
+	if err := os.MkdirAll(vaultDir, 0700); err != nil {
 		log.Printf("⚠️ Failed to ensure vault directory: %v", err)
 	}
 
@@ -141,30 +146,33 @@ func (s *StorageManager) getCipher() (cipher.AEAD, error) {
 
 // UploadFile uploads content to MinIO or stores to local vault directory with AES-256-GCM encryption at rest
 func (s *StorageManager) UploadFile(bucketName, objectKey string, fileReader io.Reader, fileSize int64) error {
-	rawBytes, err := io.ReadAll(fileReader)
+	// F-031: Enforce maximum file size to prevent memory exhaustion
+	limitedReader := io.LimitReader(fileReader, MaxEvidenceFileSize+1)
+	rawBytes, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return fmt.Errorf("failed to read payload: %w", err)
 	}
-
-	var dataToStore []byte
-
-	// Perform AES-256-GCM envelope encryption if key is configured
-	aead, cipherErr := s.getCipher()
-	if cipherErr == nil && aead != nil {
-		nonce := make([]byte, aead.NonceSize())
-		if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-			return fmt.Errorf("failed to generate encryption nonce: %w", err)
-		}
-
-		ciphertext := aead.Seal(nil, nonce, rawBytes, nil)
-
-		dataToStore = make([]byte, 0, len(encHeaderMagic)+len(nonce)+len(ciphertext))
-		dataToStore = append(dataToStore, encHeaderMagic...)
-		dataToStore = append(dataToStore, nonce...)
-		dataToStore = append(dataToStore, ciphertext...)
-	} else {
-		dataToStore = rawBytes
+	if int64(len(rawBytes)) > MaxEvidenceFileSize {
+		return fmt.Errorf("file exceeds maximum allowed size of %d bytes", MaxEvidenceFileSize)
 	}
+
+	// F-022: AES-256-GCM envelope encryption is MANDATORY — refuse to store plaintext evidence
+	aead, cipherErr := s.getCipher()
+	if cipherErr != nil {
+		return fmt.Errorf("evidence encryption is required but cipher initialization failed: %w", cipherErr)
+	}
+
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return fmt.Errorf("failed to generate encryption nonce: %w", err)
+	}
+
+	ciphertext := aead.Seal(nil, nonce, rawBytes, nil)
+
+	dataToStore := make([]byte, 0, len(encHeaderMagic)+len(nonce)+len(ciphertext))
+	dataToStore = append(dataToStore, encHeaderMagic...)
+	dataToStore = append(dataToStore, nonce...)
+	dataToStore = append(dataToStore, ciphertext...)
 
 	storedSize := int64(len(dataToStore))
 
@@ -189,9 +197,16 @@ func (s *StorageManager) UploadFile(bucketName, objectKey string, fileReader io.
 		log.Printf("⚠️ MinIO upload failed (%v), writing to local vault fallback", err)
 	}
 
-	// Local filesystem fallback
-	targetPath := filepath.Join(s.vaultDir, filepath.Base(objectKey))
-	outFile, err := os.Create(targetPath)
+	// F-036: Local filesystem fallback — use sanitized full path to prevent collisions and path traversal
+	safeName := filepath.Clean(objectKey)
+	if filepath.IsAbs(safeName) || strings.Contains(safeName, "..") {
+		return fmt.Errorf("invalid object key: path traversal detected in '%s'", objectKey)
+	}
+	targetPath := filepath.Join(s.vaultDir, safeName)
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0700); err != nil {
+		return fmt.Errorf("failed to create vault subdirectory: %w", err)
+	}
+	outFile, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return fmt.Errorf("failed to create vault file: %w", err)
 	}
@@ -212,7 +227,13 @@ func (s *StorageManager) DownloadFile(bucketName, objectKey string) (io.ReadClos
 	// 1. Check local disk vault
 	localPath := objectKey
 	if !filepath.IsAbs(localPath) && !fileExists(localPath) {
-		localPath = filepath.Join(s.vaultDir, filepath.Base(objectKey))
+		// F-036: Try full sanitized path first, then fall back to base name for legacy compatibility
+		safePath := filepath.Join(s.vaultDir, filepath.Clean(objectKey))
+		if fileExists(safePath) {
+			localPath = safePath
+		} else {
+			localPath = filepath.Join(s.vaultDir, filepath.Base(objectKey))
+		}
 	}
 
 	if fileExists(localPath) {
@@ -263,19 +284,25 @@ func (s *StorageManager) DownloadFile(bucketName, objectKey string) (io.ReadClos
 	magicLen := len(encHeaderMagic)
 	if len(rawData) > magicLen && bytes.Equal(rawData[:magicLen], encHeaderMagic) {
 		aead, err := s.getCipher()
-		if err == nil && aead != nil {
-			nonceSize := aead.NonceSize()
-			if len(rawData) >= magicLen+nonceSize+aead.Overhead() {
-				nonce := rawData[magicLen : magicLen+nonceSize]
-				ciphertext := rawData[magicLen+nonceSize:]
-
-				plaintext, decErr := aead.Open(nil, nonce, ciphertext, nil)
-				if decErr == nil {
-					return &bufferReadSeekCloser{bytes.NewReader(plaintext)}, nil
-				}
-				log.Printf("⚠️ AES-256-GCM decryption failed (%v), returning raw content", decErr)
-			}
+		if err != nil {
+			// F-023: Fail closed — do not return raw ciphertext
+			return nil, fmt.Errorf("evidence decryption key not available: %w", err)
 		}
+
+		nonceSize := aead.NonceSize()
+		if len(rawData) < magicLen+nonceSize+aead.Overhead() {
+			return nil, errors.New("encrypted evidence file is corrupted: insufficient data for nonce and ciphertext")
+		}
+
+		nonce := rawData[magicLen : magicLen+nonceSize]
+		ciphertext := rawData[magicLen+nonceSize:]
+
+		plaintext, decErr := aead.Open(nil, nonce, ciphertext, nil)
+		if decErr != nil {
+			// F-023: Return error instead of leaking raw ciphertext — possible evidence tampering
+			return nil, fmt.Errorf("evidence integrity violation: AES-256-GCM authentication failed (possible tampering)")
+		}
+		return &bufferReadSeekCloser{bytes.NewReader(plaintext)}, nil
 	}
 
 	// If unencrypted or legacy content, return buffer with ReadSeekCloser capability
@@ -314,4 +341,3 @@ func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
 }
-

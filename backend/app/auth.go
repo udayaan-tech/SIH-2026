@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"database/sql"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -99,6 +101,7 @@ type AuthHandler struct {
 	tokenCache    sync.Map // In-memory fallback blacklist for revoked tokens
 	otpSessions   sync.Map // In-memory fallback session_token -> OTPSession
 	loginAttempts sync.Map // badge_id -> loginAttempt (rate limiting / brute-force lockout)
+	userSessions  sync.Map // user_id -> latest token string (F-046: concurrent session tracking)
 	redisClient   *redis.Client
 }
 
@@ -132,6 +135,9 @@ func NewAuthHandler(db *sql.DB, cfg *config.Config) (*AuthHandler, error) {
 		}
 	}
 
+	// F-004: Start background cleanup for expired OTP sessions, login lockouts, and token blacklist
+	go handler.cleanupExpiredEntries()
+
 	return handler, nil
 }
 
@@ -161,8 +167,9 @@ func loadOrGenerateRSAKeys(cfg *config.Config) (*rsa.PrivateKey, *rsa.PublicKey,
 		}
 	}
 
-	log.Println("🔑 Generating new RSA 2048-bit keypair for RS256 JWT signing...")
-	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	// F-007: Use 4096-bit RSA keys for post-2025 compliance
+	log.Println("🔑 Generating new RSA 4096-bit keypair for RS256 JWT signing...")
+	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to generate RSA key: %w", err)
 	}
@@ -173,9 +180,11 @@ func loadOrGenerateRSAKeys(cfg *config.Config) (*rsa.PrivateKey, *rsa.PublicKey,
 			Type:  "RSA PRIVATE KEY",
 			Bytes: x509.MarshalPKCS1PrivateKey(privKey),
 		})
+		// F-008: Use PKIX (SubjectPublicKeyInfo) encoding to match "PUBLIC KEY" PEM label
+		pubDER, _ := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
 		pubBytes := pem.EncodeToMemory(&pem.Block{
 			Type:  "PUBLIC KEY",
-			Bytes: x509.MarshalPKCS1PublicKey(&privKey.PublicKey),
+			Bytes: pubDER,
 		})
 
 		_ = os.WriteFile(privPath, privBytes, 0600)
@@ -203,18 +212,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	// Brute-force lockout check: max 5 failed attempts locks account for 15 minutes
-	if val, ok := h.loginAttempts.Load(req.BadgeID); ok {
-		att := val.(loginAttempt)
-		if time.Now().Before(att.LockedUntil) {
-			remainingSec := int(time.Until(att.LockedUntil).Seconds())
-			c.JSON(http.StatusTooManyRequests, gin.H{
-				"success": false,
-				"data":    nil,
-				"error":   fmt.Sprintf("Account locked due to excessive failed attempts. Please retry after %d seconds.", remainingSec),
-			})
-			return
-		}
+	// Brute-force lockout check (F-002: in-memory + Redis)
+	if locked, remainingSec := h.isAccountLocked(req.BadgeID); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   fmt.Sprintf("Account locked due to excessive failed attempts. Please retry after %d seconds.", remainingSec),
+		})
+		return
 	}
 
 	// Query user by badge_id
@@ -262,17 +267,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		// Increment failed login attempt
-		var att loginAttempt
-		if val, ok := h.loginAttempts.Load(req.BadgeID); ok {
-			att = val.(loginAttempt)
-		}
-		att.Count++
-		if att.Count >= 5 {
-			att.LockedUntil = time.Now().Add(15 * time.Minute)
-			log.Printf("⚠️ Account %s locked for 15 minutes due to 5 consecutive failed attempts", req.BadgeID)
-		}
-		h.loginAttempts.Store(req.BadgeID, att)
+		h.recordFailedLogin(req.BadgeID)
 
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -283,7 +278,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Reset failed attempts on success
-	h.loginAttempts.Delete(req.BadgeID)
+	h.resetLoginAttempts(req.BadgeID)
 
 	// Generate 6-digit OTP
 	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
@@ -297,8 +292,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 	})
 
-	// Log OTP to terminal (mocking NIC SMS gateway)
-	log.Printf("📱 [NIC SMS GATEWAY] Dispatching 2FA OTP for Officer %s (%s): %s (Valid for 5 mins)", user.Name, user.BadgeID, otp)
+	// F-029: Log OTP only in non-production environments
+	if h.cfg.Environment != "production" {
+		log.Printf("📱 [NIC SMS GATEWAY] Dispatching 2FA OTP for Officer %s (%s): %s (Valid for 5 mins)", user.Name, user.BadgeID, otp)
+	} else {
+		log.Printf("📱 [NIC SMS GATEWAY] OTP dispatched to registered terminal for Officer %s", user.BadgeID)
+	}
 
 	respData := gin.H{
 		"session_token": sessionToken,
@@ -341,18 +340,8 @@ func (h *AuthHandler) MFAVerify(c *gin.Context) {
 			session = val.(OTPSession)
 			sessionFound = true
 		}
-	} else if req.BadgeID != "" {
-		// Fallback lookup by badge
-		h.otpSessions.Range(func(key, value any) bool {
-			s := value.(OTPSession)
-			if s.BadgeID == req.BadgeID {
-				session = s
-				sessionFound = true
-				return false
-			}
-			return true
-		})
 	}
+	// F-009: Removed insecure Range-based badge_id fallback lookup that could match wrong sessions
 
 	// Master demo OTP "123456" is strictly restricted to development environments
 	isMasterOTP := (h.cfg.Environment != "production") && (req.OTP == "123456")
@@ -388,12 +377,18 @@ func (h *AuthHandler) MFAVerify(c *gin.Context) {
 	}
 
 	// Retrieve user profile to generate token claims
+	// F-001: Require explicit badge_id — removed default "DL-4821" fallback
 	badgeIDToLookup := req.BadgeID
 	if sessionFound && badgeIDToLookup == "" {
 		badgeIDToLookup = session.BadgeID
 	}
 	if badgeIDToLookup == "" {
-		badgeIDToLookup = "DL-4821" // Default demo officer
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "Badge ID is required for MFA verification",
+		})
+		return
 	}
 
 	var user User
@@ -426,10 +421,20 @@ func (h *AuthHandler) MFAVerify(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to sign access token: %v", err),
+			// F-006: Do not leak internal crypto error details to client
+			"error":   "Failed to issue access token. Please contact administrator.",
 		})
 		return
 	}
+
+	// F-046: Concurrent session detection — enforce single active session per officer
+	if prevToken, exists := h.userSessions.Load(user.ID); exists {
+		log.Printf("⚠️ SECURITY NOTICE: Concurrent session detected for Officer %s (%s). Invalidating prior session.", user.Name, user.BadgeID)
+		if prevStr, ok := prevToken.(string); ok && prevStr != "" {
+			h.revokeToken(prevStr)
+		}
+	}
+	h.userSessions.Store(user.ID, tokenString)
 
 	// Clean up OTP session
 	if req.SessionToken != "" {
@@ -467,7 +472,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	// Check if already blacklisted
+	// Check if already blacklisted (F-034: value is now time.Time, not bool)
 	if _, blacklisted := h.tokenCache.Load(tokenStr); blacklisted {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -519,8 +524,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		return
 	}
 
-	// Revoke old token
-	h.tokenCache.Store(tokenStr, true)
+	// Revoke old token — F-003, F-034: store timestamp and sync with Redis
+	h.revokeToken(tokenStr)
 
 	// Issue new token
 	newTokenStr, newClaims, err := h.generateJWT(&user)
@@ -564,8 +569,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	// Blacklist token in memory cache
-	h.tokenCache.Store(tokenStr, true)
+	// Blacklist token in memory cache and Redis — F-003, F-034
+	h.revokeToken(tokenStr)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -598,6 +603,188 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	})
 }
 
+// ChangePasswordRequest payload for password modification (F-044)
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+// validatePasswordComplexity enforces password complexity standards (F-044)
+func validatePasswordComplexity(p string) error {
+	if len(p) < 8 {
+		return errors.New("password must be at least 8 characters long")
+	}
+	var hasUpper, hasLower, hasDigit, hasSpecial bool
+	for _, c := range p {
+		switch {
+		case unicode.IsUpper(c):
+			hasUpper = true
+		case unicode.IsLower(c):
+			hasLower = true
+		case unicode.IsDigit(c):
+			hasDigit = true
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			hasSpecial = true
+		}
+	}
+	if !hasUpper {
+		return errors.New("password must contain at least one uppercase letter")
+	}
+	if !hasLower {
+		return errors.New("password must contain at least one lowercase letter")
+	}
+	if !hasDigit {
+		return errors.New("password must contain at least one number")
+	}
+	if !hasSpecial {
+		return errors.New("password must contain at least one special character")
+	}
+	return nil
+}
+
+// ChangePassword updates an officer's password with strict complexity validation (F-044)
+// POST /api/v1/auth/change-password
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	callerID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "Unauthorized"})
+		return
+	}
+	callerBadge, _ := c.Get("badge_id")
+	callerIDStr := fmt.Sprintf("%v", callerID)
+	callerBadgeStr := fmt.Sprintf("%v", callerBadge)
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "old_password and new_password are required"})
+		return
+	}
+
+	if req.OldPassword == req.NewPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "New password cannot be identical to current password"})
+		return
+	}
+
+	if err := validatePasswordComplexity(req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	var currentHash string
+	err := h.db.QueryRow("SELECT password_hash FROM users WHERE id = $1", callerIDStr).Scan(&currentHash)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to verify account"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(currentHash), []byte(req.OldPassword)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "error": "Incorrect current password"})
+		return
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 12)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to secure new password"})
+		return
+	}
+
+	_, err = h.db.Exec("UPDATE users SET password_hash = $1 WHERE id = $2", string(newHash), callerIDStr)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to update password"})
+		return
+	}
+
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	auditDetails, _ := json.Marshal(map[string]interface{}{"event": "password_changed", "badge_id": callerBadgeStr})
+	_ = RecordAuditEvent(h.db, callerIDStr, callerBadgeStr, "USER_PASSWORD_CHANGED", "USER", callerIDStr, string(auditDetails), c.ClientIP())
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"message": "Password updated successfully. Please re-authenticate.",
+		},
+		"error": nil,
+	})
+}
+
+// Helper methods for token revocation and login lockout (F-002, F-003)
+func (h *AuthHandler) revokeToken(tokenStr string) {
+	h.tokenCache.Store(tokenStr, time.Now())
+	if h.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		_ = h.redisClient.Set(ctx, "revoked:"+tokenStr, "1", 35*time.Minute).Err()
+	}
+}
+
+func (h *AuthHandler) isTokenRevoked(tokenStr string) bool {
+	if _, revoked := h.tokenCache.Load(tokenStr); revoked {
+		return true
+	}
+	if h.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		if val, err := h.redisClient.Get(ctx, "revoked:"+tokenStr).Result(); err == nil && val != "" {
+			h.tokenCache.Store(tokenStr, time.Now())
+			return true
+		}
+	}
+	return false
+}
+
+func (h *AuthHandler) isAccountLocked(badgeID string) (bool, int) {
+	// 1. Check Redis if available (F-002: persistence across restarts and replicas)
+	if h.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		ttl, err := h.redisClient.TTL(ctx, "lockout:"+badgeID).Result()
+		if err == nil && ttl > 0 {
+			return true, int(ttl.Seconds())
+		}
+	}
+	// 2. Check local in-memory fallback
+	if val, ok := h.loginAttempts.Load(badgeID); ok {
+		att := val.(loginAttempt)
+		if time.Now().Before(att.LockedUntil) {
+			return true, int(time.Until(att.LockedUntil).Seconds())
+		}
+	}
+	return false, 0
+}
+
+func (h *AuthHandler) recordFailedLogin(badgeID string) {
+	var att loginAttempt
+	if val, ok := h.loginAttempts.Load(badgeID); ok {
+		att = val.(loginAttempt)
+	}
+	att.Count++
+	if att.Count >= 5 {
+		att.LockedUntil = time.Now().Add(15 * time.Minute)
+		log.Printf("⚠️ Account %s locked for 15 minutes due to 5 consecutive failed attempts", badgeID)
+	}
+	h.loginAttempts.Store(badgeID, att)
+
+	if h.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		if att.Count >= 5 {
+			_ = h.redisClient.Set(ctx, "lockout:"+badgeID, "locked", 15*time.Minute).Err()
+		} else {
+			_ = h.redisClient.Incr(ctx, "attempts:"+badgeID).Err()
+			_ = h.redisClient.Expire(ctx, "attempts:"+badgeID, 15*time.Minute).Err()
+		}
+	}
+}
+
+func (h *AuthHandler) resetLoginAttempts(badgeID string) {
+	h.loginAttempts.Delete(badgeID)
+	if h.redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		_ = h.redisClient.Del(ctx, "lockout:"+badgeID, "attempts:"+badgeID).Err()
+	}
+}
+
 // ═══════════════════════════════════════════════════
 // TOKEN GENERATION & HELPERS
 // ═══════════════════════════════════════════════════
@@ -618,7 +805,8 @@ func (h *AuthHandler) generateJWT(user *User) (string, *JWTClaims, error) {
 			Issuer:    issuer,
 			Subject:   user.ID,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			// F-005: 30-minute token lifetime for high-security legal system (was 24h)
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * time.Minute)),
 			ID:        uuid.New().String(),
 		},
 	}
@@ -630,6 +818,40 @@ func (h *AuthHandler) generateJWT(user *User) (string, *JWTClaims, error) {
 	}
 
 	return tokenString, claims, nil
+}
+
+// cleanupExpiredEntries runs periodically to prevent unbounded growth of in-memory maps (F-004, F-034)
+func (h *AuthHandler) cleanupExpiredEntries() {
+	ticker := time.NewTicker(2 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		// Clean expired OTP sessions
+		h.otpSessions.Range(func(key, value any) bool {
+			session := value.(OTPSession)
+			if now.After(session.ExpiresAt) {
+				h.otpSessions.Delete(key)
+			}
+			return true
+		})
+		// Clean expired login lockouts
+		h.loginAttempts.Range(func(key, value any) bool {
+			att := value.(loginAttempt)
+			if !att.LockedUntil.IsZero() && now.After(att.LockedUntil) {
+				h.loginAttempts.Delete(key)
+			}
+			return true
+		})
+		// F-034: Clean token blacklist entries older than max JWT lifetime
+		h.tokenCache.Range(func(key, value any) bool {
+			if t, ok := value.(time.Time); ok {
+				if now.Sub(t) > 1*time.Hour {
+					h.tokenCache.Delete(key)
+				}
+			}
+			return true
+		})
+	}
 }
 
 func extractTokenFromHeaderOrBody(c *gin.Context) string {
@@ -666,8 +888,8 @@ func (h *AuthHandler) AuthRequired() gin.HandlerFunc {
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-		// Check if token has been revoked
-		if _, revoked := h.tokenCache.Load(tokenStr); revoked {
+		// Check if token has been revoked (F-003, F-034)
+		if h.isTokenRevoked(tokenStr) {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"data":    nil,
@@ -686,10 +908,11 @@ func (h *AuthHandler) AuthRequired() gin.HandlerFunc {
 		})
 
 		if err != nil || !token.Valid {
+			// F-006: Do not leak JWT parsing internals to client
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"data":    nil,
-				"error":   fmt.Sprintf("Unauthorized: %v", err),
+				"error":   "Token is invalid or has expired. Please authenticate again.",
 			})
 			c.Abort()
 			return
@@ -763,9 +986,16 @@ func RegisterAuthRoutes(router *gin.Engine, db *sql.DB, cfg *config.Config) *Aut
 
 		// Protected endpoints
 		authGroup.GET("/me", handler.AuthRequired(), handler.Me)
+		authGroup.POST("/change-password", handler.AuthRequired(), handler.ChangePassword)
 	}
 
 	log.Println("✅ Auth routes registered (/api/v1/auth)")
+
+	// F-044: Warn about default passwords in non-production
+	if cfg.Environment != "production" {
+		log.Println("⚠️  WARNING: Demo officers seeded with default password 'password123'. Enforce password change in production.")
+	}
+
 	return handler
 }
 

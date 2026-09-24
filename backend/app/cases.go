@@ -2,6 +2,7 @@ package app
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -108,7 +109,7 @@ func (h *CaseHandler) CreateCase(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Invalid request payload: %v", err),
+			"error":   "Invalid request payload. Please check input fields.",
 		})
 		return
 	}
@@ -121,6 +122,44 @@ func (h *CaseHandler) CreateCase(c *gin.Context) {
 			"error":   fmt.Sprintf("Invalid FIR number format '%s'. Must match format 'FIR-YYYY-STATE-XXXXX' (e.g., FIR-2026-DL-00192)", req.FIRNumber),
 		})
 		return
+	}
+
+	// F-017: Enforce description length limit
+	if len(req.Description) > 5000 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "Description exceeds maximum length of 5000 characters",
+		})
+		return
+	}
+
+	// F-018: Validate legal sections array
+	if len(req.LegalSections) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "At least one legal section is required",
+		})
+		return
+	}
+	if len(req.LegalSections) > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "Too many legal sections (max 50)",
+		})
+		return
+	}
+	for _, s := range req.LegalSections {
+		if len(s) > 200 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"data":    nil,
+				"error":   fmt.Sprintf("Legal section entry exceeds maximum length of 200 characters: '%s'", s[:50]),
+			})
+			return
+		}
 	}
 
 	callerID, _ := c.Get("user_id")
@@ -186,7 +225,7 @@ func (h *CaseHandler) CreateCase(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to register case: %v", err),
+			"error":   "Failed to register case. Please contact support.",
 		})
 		return
 	}
@@ -201,10 +240,9 @@ func (h *CaseHandler) CreateCase(c *gin.Context) {
 		actorID = fmt.Sprintf("%v", callerID)
 	}
 
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'CASE_CREATED', 'CASE', $3, $4, $5)
-	`, nilIfEmptyString(actorID), actorBadge, newCase.ID, fmt.Sprintf(`{"fir_number":"%s","is_pocso":%t}`, newCase.FIRNumber, newCase.IsPOCSO), c.ClientIP())
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	auditDetails, _ := json.Marshal(map[string]interface{}{"fir_number": newCase.FIRNumber, "is_pocso": newCase.IsPOCSO})
+	_ = RecordAuditEvent(h.db, actorID, actorBadge, "CASE_CREATED", "CASE", newCase.ID, string(auditDetails), c.ClientIP())
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -328,7 +366,7 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to list cases: %v", err),
+			"error":   "Failed to list cases. Please contact support.",
 		})
 		return
 	}
@@ -353,9 +391,14 @@ func (h *CaseHandler) ListCases(c *gin.Context) {
 			&item.DocumentCount,
 		)
 		if err != nil {
+			log.Printf("⚠️ Error scanning case row: %v", err)
 			continue
 		}
 		cases = append(cases, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("⚠️ Error iterating case rows: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -383,6 +426,50 @@ func (h *CaseHandler) GetCase(c *gin.Context) {
 		})
 		return
 	}
+
+	// F-010: BOLA/IDOR access control — enforce role-based visibility on single case lookup
+	callerID, _ := c.Get("user_id")
+	callerRole, _ := c.Get("role")
+	roleStr := ""
+	if callerRole != nil {
+		roleStr = strings.ToUpper(fmt.Sprintf("%v", callerRole))
+	}
+	userIDStr := ""
+	if callerID != nil {
+		userIDStr = fmt.Sprintf("%v", callerID)
+	}
+
+	// Non-privileged roles must have a direct relationship with the case
+	if roleStr == RoleIO {
+		var count int
+		_ = h.db.QueryRow("SELECT COUNT(*) FROM cases WHERE id = $1 AND io_id = $2", caseID, userIDStr).Scan(&count)
+		if count == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"data":    nil,
+				"error":   "Access denied: Officer is not assigned as IO on this case",
+			})
+			return
+		}
+	} else if roleStr == RoleFSL {
+		var count int
+		_ = h.db.QueryRow(`
+			SELECT COUNT(*) FROM cases c WHERE c.id = $1 AND c.id IN (
+				SELECT d.case_id FROM documents d
+				JOIN custody_events ce ON d.id = ce.document_id
+				WHERE ce.to_officer = $2 OR ce.to_agency = 'FSL'
+			)
+		`, caseID, userIDStr).Scan(&count)
+		if count == 0 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"data":    nil,
+				"error":   "Access denied: FSL officer has no custody of evidence from this case",
+			})
+			return
+		}
+	}
+	// PROSECUTOR, JUDGE, ADMIN have full visibility
 
 	var detail CaseDetail
 	err := h.db.QueryRow(`
@@ -420,7 +507,7 @@ func (h *CaseHandler) GetCase(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to load case: %v", err),
+			"error":   "Failed to load case",
 		})
 		return
 	}
@@ -451,7 +538,12 @@ func (h *CaseHandler) GetCase(c *gin.Context) {
 				&doc.CreatedAt,
 			); err == nil {
 				detail.Documents = append(detail.Documents, doc)
+			} else {
+				log.Printf("⚠️ Error scanning case document: %v", err)
 			}
+		}
+		if err := docRows.Err(); err != nil {
+			log.Printf("⚠️ Error iterating case documents: %v", err)
 		}
 	}
 	detail.DocumentCount = len(detail.Documents)
@@ -541,16 +633,26 @@ func (h *CaseHandler) UpdateCaseStatus(c *gin.Context) {
 		}
 	}
 
-	// Update status
-	_, err = h.db.Exec(`
-		UPDATE cases SET status = $1 WHERE id = $2
-	`, newStatus, caseID)
+	// F-026: Use optimistic locking — only update if status hasn't changed since we read it
+	result, err := h.db.Exec(`
+		UPDATE cases SET status = $1 WHERE id = $2 AND status = $3
+	`, newStatus, caseID, prevStatus)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to update case status: %v", err),
+			"error":   "Failed to update case status",
+		})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusConflict, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "Case status was modified by another user. Please refresh and retry.",
 		})
 		return
 	}
@@ -565,10 +667,9 @@ func (h *CaseHandler) UpdateCaseStatus(c *gin.Context) {
 		actorID = fmt.Sprintf("%v", callerID)
 	}
 
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'CASE_STATUS_UPDATED', 'CASE', $3, $4, $5)
-	`, nilIfEmptyString(actorID), actorBadge, caseID, fmt.Sprintf(`{"fir_number":"%s","from":"%s","to":"%s","notes":"%s"}`, firNumber, prevStatus, newStatus, req.Notes), c.ClientIP())
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	statusAudit, _ := json.Marshal(map[string]interface{}{"fir_number": firNumber, "from": prevStatus, "to": newStatus, "notes": req.Notes})
+	_ = RecordAuditEvent(h.db, actorID, actorBadge, "CASE_STATUS_UPDATED", "CASE", caseID, string(statusAudit), c.ClientIP())
 
 	// Dispatch in-app notification to the assigned IO if status changed by another party
 	if ioID != nil && *ioID != actorID {

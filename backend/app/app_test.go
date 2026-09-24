@@ -172,7 +172,10 @@ func TestStorageWORMAndVaultFallback(t *testing.T) {
 	defer os.RemoveAll(tempVault)
 
 	sm := &StorageManager{
-		cfg:      &config.Config{MinIOBucket: "test-bucket"},
+		cfg: &config.Config{
+			MinIOBucket:           "test-bucket",
+			EvidenceEncryptionKey: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		},
 		vaultDir: tempVault,
 		useMinIO: false,
 	}

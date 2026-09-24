@@ -247,7 +247,7 @@ func (h *RedactionHandler) ListQueue(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to load redaction queue: %v", err),
+			"error":   "Failed to load redaction queue",
 		})
 		return
 	}
@@ -271,6 +271,7 @@ func (h *RedactionHandler) ListQueue(c *gin.Context) {
 			&item.CreatedAt,
 		)
 		if err != nil {
+			log.Printf("⚠️ Error scanning redaction item: %v", err)
 			continue
 		}
 
@@ -282,6 +283,10 @@ func (h *RedactionHandler) ListQueue(c *gin.Context) {
 		}
 
 		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("⚠️ Error iterating redaction items: %v", err)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -338,7 +343,7 @@ func (h *RedactionHandler) GetRedactionItem(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to load redaction item: %v", err),
+			"error":   "Failed to load redaction item",
 		})
 		return
 	}
@@ -377,7 +382,7 @@ func (h *RedactionHandler) ApproveRedaction(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to approve redaction: %v", err),
+			"error":   "Failed to approve redaction",
 		})
 		return
 	}
@@ -422,13 +427,26 @@ func (h *RedactionHandler) ApproveRedaction(c *gin.Context) {
 				if r, dlErr := DownloadFile(h.cfg.MinIOBucket, *originalStorageKey); dlErr == nil {
 					data, _ := io.ReadAll(r)
 					_ = r.Close()
-					contentStr := string(data)
-					for _, ent := range entities {
-						if ent.Value != "" && ent.Masked != "" {
-							contentStr = strings.ReplaceAll(contentStr, ent.Value, ent.Masked)
+					// F-050: Only apply text-based redaction to text content, not binary files
+					isBinary := false
+					for _, b := range data[:min(512, len(data))] {
+						if b == 0 {
+							isBinary = true
+							break
 						}
 					}
-					redactedBytes = []byte(contentStr)
+					if !isBinary {
+						contentStr := string(data)
+						for _, ent := range entities {
+							if ent.Value != "" && ent.Masked != "" {
+								contentStr = strings.ReplaceAll(contentStr, ent.Value, ent.Masked)
+							}
+						}
+						redactedBytes = []byte(contentStr)
+					} else {
+						// Binary evidence — create placeholder sanitized document
+						redactedBytes = []byte(fmt.Sprintf("[BINARY EVIDENCE — PII METADATA STRIPPED]\nOriginal: %s\nRedaction applied: %s", originalTitle, now.Format(time.RFC3339)))
+					}
 				}
 			}
 
@@ -436,7 +454,7 @@ func (h *RedactionHandler) ApproveRedaction(c *gin.Context) {
 				redactedBytes = []byte(fmt.Sprintf("[COURT SEALED - SANITIZED EVIDENTIARY ASSET UNDER BNSS/BSA SECTION 63/65B]\nOriginal Evidence Title: %s\nRedaction Processed: %s by %s\nAll PII/POCSO identifiers masked.", originalTitle, now.Format(time.RFC3339), callerBadgeStr))
 			}
 
-			redactedStorageKey := fmt.Sprintf("redacted_%s_%s", docID, originalTitle)
+			redactedStorageKey := fmt.Sprintf("redacted_%s", docID)
 			_ = UploadFile(h.cfg.MinIOBucket, redactedStorageKey, bytes.NewReader(redactedBytes), int64(len(redactedBytes)))
 
 			redactedSHA := fmt.Sprintf("%x", sha256.Sum256(redactedBytes))
@@ -449,18 +467,13 @@ func (h *RedactionHandler) ApproveRedaction(c *gin.Context) {
 				RETURNING id
 			`, caseID, sanitizedTitle, docType, int64(len(redactedBytes)), redactedStorageKey, redactedSHA, callerIDStr).Scan(&sanitizedDocID)
 
-			_, _ = h.db.Exec(`
-				INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-				VALUES ($1, $2, 'REDACTED_DOCUMENT_CREATED', 'DOCUMENT', $3, $4, $5)
-			`, callerIDStr, callerBadgeStr, sanitizedDocID, fmt.Sprintf(`{"parent_document_id":"%s","title":"%s"}`, docID, sanitizedTitle), c.ClientIP())
+			docAudit, _ := json.Marshal(map[string]interface{}{"parent_document_id": docID, "title": sanitizedTitle})
+			_ = RecordAuditEvent(h.db, callerIDStr, callerBadgeStr, "REDACTED_DOCUMENT_CREATED", "DOCUMENT", sanitizedDocID, string(docAudit), c.ClientIP())
 		}
 	}
 
-	// Audit trail record
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'PII_REDACTION_APPROVED', 'REDACTION', $3, $4, $5)
-	`, callerIDStr, callerBadgeStr, id, `{"status":"APPROVED"}`, c.ClientIP())
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	_ = RecordAuditEvent(h.db, callerIDStr, callerBadgeStr, "PII_REDACTION_APPROVED", "REDACTION", id, `{"status":"APPROVED"}`, c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -499,7 +512,7 @@ func (h *RedactionHandler) RejectRedaction(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to reject redaction: %v", err),
+			"error":   "Failed to reject redaction",
 		})
 		return
 	}
@@ -514,11 +527,9 @@ func (h *RedactionHandler) RejectRedaction(c *gin.Context) {
 		return
 	}
 
-	// Audit trail record
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'PII_REDACTION_REJECTED', 'REDACTION', $3, $4, $5)
-	`, callerIDStr, callerBadgeStr, id, fmt.Sprintf(`{"status":"REJECTED","notes":"%s"}`, req.Notes), c.ClientIP())
+	// F-016, F-020: Record in append-only cryptographic hash chain
+	rejectAudit, _ := json.Marshal(map[string]interface{}{"status": "REJECTED", "notes": req.Notes})
+	_ = RecordAuditEvent(h.db, callerIDStr, callerBadgeStr, "PII_REDACTION_REJECTED", "REDACTION", id, string(rejectAudit), c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -557,7 +568,7 @@ func (h *RedactionHandler) ScanDocument(c *gin.Context) {
 	`, body.DocumentID, entitiesJSON).Scan(&queueID)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": fmt.Sprintf("Failed to queue: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to add document to redaction queue"})
 		return
 	}
 
@@ -584,11 +595,12 @@ func RegisterRedactionRoutes(router *gin.Engine, db *sql.DB, cfg *config.Config,
 	redactGroup := router.Group("/api/v1/redaction")
 	redactGroup.Use(authHandler.AuthRequired())
 	{
-		redactGroup.GET("/queue", handler.ListQueue)
-		redactGroup.GET("/:id", handler.GetRedactionItem)
-		redactGroup.POST("/:id/approve", handler.ApproveRedaction)
-		redactGroup.POST("/:id/reject", handler.RejectRedaction)
-		redactGroup.POST("/scan", handler.ScanDocument)
+		// F-012: Role-restricted access — only IO, Prosecutor, Judge, and Admin can manage redactions
+		redactGroup.GET("/queue", RequireRole(RoleIO, RoleProsecutor, RoleJudge, RoleAdmin), handler.ListQueue)
+		redactGroup.GET("/:id", RequireRole(RoleIO, RoleProsecutor, RoleJudge, RoleAdmin), handler.GetRedactionItem)
+		redactGroup.POST("/:id/approve", RequireRole(RoleProsecutor, RoleJudge, RoleAdmin), handler.ApproveRedaction)
+		redactGroup.POST("/:id/reject", RequireRole(RoleProsecutor, RoleJudge, RoleAdmin), handler.RejectRedaction)
+		redactGroup.POST("/scan", RequireRole(RoleIO, RoleAdmin), handler.ScanDocument)
 	}
 
 	log.Println("✅ Redaction routes registered (/api/v1/redaction)")

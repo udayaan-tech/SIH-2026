@@ -3,6 +3,7 @@ package app
 import (
 	"crypto/sha256"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -97,9 +98,21 @@ func (h *CustodyHandler) TransferEvidence(c *gin.Context) {
 		return
 	}
 
+	// F-025: Begin transaction for atomic transfer operation
+	tx, txErr := h.db.Begin()
+	if txErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "Failed to initiate transfer",
+		})
+		return
+	}
+	defer tx.Rollback()
+
 	// 1. Prevent duplicate concurrent transfers: reject if a transfer is currently pending acceptance
 	var pendingCount int
-	err = h.db.QueryRow("SELECT COUNT(*) FROM custody_events WHERE document_id = $1 AND signed_by_receiver = false", req.DocumentID).Scan(&pendingCount)
+	err = tx.QueryRow("SELECT COUNT(*) FROM custody_events WHERE document_id = $1 AND signed_by_receiver = false", req.DocumentID).Scan(&pendingCount)
 	if err == nil && pendingCount > 0 {
 		c.JSON(http.StatusConflict, gin.H{
 			"success": false,
@@ -112,7 +125,7 @@ func (h *CustodyHandler) TransferEvidence(c *gin.Context) {
 	// 2. Sender Possession Verification: Verify caller is the current legal possessor
 	var currentHolderID string
 	var lastReceiver string
-	err = h.db.QueryRow(`
+	err = tx.QueryRow(`
 		SELECT to_officer FROM custody_events 
 		WHERE document_id = $1 AND signed_by_receiver = true 
 		ORDER BY transferred_at DESC LIMIT 1
@@ -123,7 +136,7 @@ func (h *CustodyHandler) TransferEvidence(c *gin.Context) {
 	} else {
 		// If no prior completed transfers, original uploader holds custody
 		var uploaderID *string
-		_ = h.db.QueryRow("SELECT uploaded_by FROM documents WHERE id = $1", req.DocumentID).Scan(&uploaderID)
+		_ = tx.QueryRow("SELECT uploaded_by FROM documents WHERE id = $1", req.DocumentID).Scan(&uploaderID)
 		if uploaderID != nil {
 			currentHolderID = *uploaderID
 		}
@@ -170,7 +183,7 @@ func (h *CustodyHandler) TransferEvidence(c *gin.Context) {
 	// Insert custody event: signed_by_sender = true, signed_by_receiver = false
 	var eventID string
 	var transferredAt time.Time
-	err = h.db.QueryRow(`
+	err = tx.QueryRow(`
 		INSERT INTO custody_events (
 			document_id, from_officer, to_officer, from_agency, to_agency,
 			signed_by_sender, signed_by_receiver, notes
@@ -183,10 +196,21 @@ func (h *CustodyHandler) TransferEvidence(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to initiate transfer: %v", err),
+			"error":   "Failed to initiate transfer",
 		})
 		return
 	}
+
+	// Commit transaction (F-025)
+	if commitErr := tx.Commit(); commitErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    nil,
+			"error":   "Failed to finalize transfer",
+		})
+		return
+	}
+
 
 	// Create in-app notification for the receiving officer
 	callerBadgeStr := ""
@@ -199,11 +223,9 @@ func (h *CustodyHandler) TransferEvidence(c *gin.Context) {
 		VALUES ($1, $2, $3, 'CUSTODY_TRANSFER_PENDING', $4, $5)
 	`, req.ToOfficerID, "Pending Custody Transfer", fmt.Sprintf("Officer %s initiated custody transfer of document '%s' to you. Signature required to complete transfer.", callerBadgeStr, docTitle), caseID, req.DocumentID)
 
-	// Log audit event
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'CUSTODY_TRANSFER_INITIATED', 'CUSTODY', $3, $4, $5)
-	`, fromOfficerID, callerBadgeStr, eventID, fmt.Sprintf(`{"document_id":"%s","to_officer":"%s","to_badge":"%s","sender_signature":"%s"}`, req.DocumentID, req.ToOfficerID, toBadge, senderSignature), c.ClientIP())
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	auditDetails, _ := json.Marshal(map[string]interface{}{"document_id": req.DocumentID, "to_officer": req.ToOfficerID, "to_badge": toBadge, "sender_signature": senderSignature})
+	_ = RecordAuditEvent(h.db, fromOfficerID, callerBadgeStr, "CUSTODY_TRANSFER_INITIATED", "CUSTODY", eventID, string(auditDetails), c.ClientIP())
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -261,9 +283,13 @@ func (h *CustodyHandler) AcceptCustody(c *gin.Context) {
 		return
 	}
 
-	// Verify that the caller is indeed the intended recipient or admin
+	// F-014: Fix interface comparison — convert callerRole to string before comparing
 	callerRole, _ := c.Get("role")
-	if toOfficerID != callerIDStr && callerRole != RoleAdmin {
+	callerRoleStr := ""
+	if callerRole != nil {
+		callerRoleStr = strings.ToUpper(fmt.Sprintf("%v", callerRole))
+	}
+	if toOfficerID != callerIDStr && callerRoleStr != RoleAdmin {
 		c.JSON(http.StatusForbidden, gin.H{
 			"success": false,
 			"data":    nil,
@@ -290,7 +316,7 @@ func (h *CustodyHandler) AcceptCustody(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to sign custody transfer: %v", err),
+			"error":   "Failed to sign custody transfer",
 		})
 		return
 	}
@@ -301,11 +327,9 @@ func (h *CustodyHandler) AcceptCustody(c *gin.Context) {
 		VALUES ($1, $2, $3, 'CUSTODY_TRANSFER_ACCEPTED', $4)
 	`, fromOfficerID, "Custody Transfer Signed & Accepted", fmt.Sprintf("Officer %s accepted custody of evidence document.", callerBadgeStr), docID)
 
-	// Audit trail record
-	_, _ = h.db.Exec(`
-		INSERT INTO audit_events (actor_id, actor_badge, action, target_type, target_id, details, ip_address)
-		VALUES ($1, $2, 'CUSTODY_TRANSFER_ACCEPTED', 'CUSTODY', $3, $4, $5)
-	`, callerIDStr, callerBadgeStr, transferID, fmt.Sprintf(`{"document_id":"%s","signed_by":"%s","receiver_signature":"%s"}`, docID, callerBadgeStr, receiverSignature), c.ClientIP())
+	// F-015, F-020: Record in append-only cryptographic hash chain
+	recvAudit, _ := json.Marshal(map[string]interface{}{"document_id": docID, "signed_by": callerBadgeStr, "receiver_signature": receiverSignature})
+	_ = RecordAuditEvent(h.db, callerIDStr, callerBadgeStr, "CUSTODY_TRANSFER_ACCEPTED", "CUSTODY", transferID, string(recvAudit), c.ClientIP())
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -328,8 +352,8 @@ func (h *CustodyHandler) GetCustodyChain(c *gin.Context) {
 
 	// Verify document exists
 	var docTitle string
-	var sha256 string
-	err := h.db.QueryRow("SELECT title, sha256_hash FROM documents WHERE id = $1", docID).Scan(&docTitle, &sha256)
+	var sha256Hash string
+	err := h.db.QueryRow("SELECT title, sha256_hash FROM documents WHERE id = $1", docID).Scan(&docTitle, &sha256Hash)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -342,7 +366,7 @@ func (h *CustodyHandler) GetCustodyChain(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Database error: %v", err),
+			"error":   "Database error while loading custody chain",
 		})
 		return
 	}
@@ -364,7 +388,7 @@ func (h *CustodyHandler) GetCustodyChain(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    nil,
-			"error":   fmt.Sprintf("Failed to load custody chain: %v", err),
+			"error":   "Failed to load custody chain",
 		})
 		return
 	}
@@ -391,6 +415,7 @@ func (h *CustodyHandler) GetCustodyChain(c *gin.Context) {
 			&ev.ToOfficerBadge,
 		)
 		if err != nil {
+			log.Printf("⚠️ Error scanning custody event: %v", err)
 			continue
 		}
 
@@ -416,12 +441,16 @@ func (h *CustodyHandler) GetCustodyChain(c *gin.Context) {
 		events = append(events, ev)
 	}
 
+	if err := rows.Err(); err != nil {
+		log.Printf("⚠️ Error iterating custody events: %v", err)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
 			"document_id":    docID,
 			"document_title": docTitle,
-			"sha256_hash":    sha256,
+			"sha256_hash":    sha256Hash,
 			"chain":          events,
 			"total_handoffs": len(events),
 		},
