@@ -50,46 +50,46 @@ export default function DashboardPage() {
             <h1 style={{ color: '#ffffff', fontSize: '28px', fontWeight: 700, marginBottom: '6px' }}>
               {isHindi ? 'संचालन डैशबोर्ड' : 'Operations Dashboard'}
             </h1>
-            <div className="page-subtitle" style={{ color: '#cbd5e1', fontSize: '15px' }}>
+            <div className="page-subtitle" style={{ color: 'var(--gov-border-light)', fontSize: '15px' }}>
               {isHindi ? 'स्वागत है' : 'Welcome back'}, <strong style={{ color: '#ffffff' }}>{currentOfficer.full_name}</strong> ({currentOfficer.designation})
             </div>
           </div>
           <div className="page-actions" style={{ gap: '12px' }}>
-            <button className="btn btn-secondary" style={{ backgroundColor: '#1e293b', color: '#fff', border: '1px solid #334155' }} onClick={() => router.push('/security-center')}>
-              <span style={{ color: '#4ade80', fontSize: '14px', marginRight: '6px' }}>●</span> System Status: SECURE
+            <button className="btn btn-secondary" onClick={() => router.push('/security-center')}>
+              System Status: SECURE
             </button>
-            <button className="btn btn-primary" style={{ backgroundColor: '#ffffff', color: 'var(--gov-navy-dark)' }} onClick={() => router.push('/cases')}>
-              + Manage Cases
+            <button className="btn btn-primary" onClick={() => router.push('/cases')}>
+              <i className="fa-solid fa-plus" style={{ marginRight: '6px' }}></i> Manage Cases
             </button>
           </div>
         </div>
 
         {/* Clear Meta Strip */}
         <div style={{ 
-          backgroundColor: '#1e293b', 
-          border: '1px solid #334155', 
+          backgroundColor: 'var(--gov-surface)', 
+          border: '1px solid var(--gov-border)', 
           borderRadius: 'var(--radius-sm)', 
           padding: '12px 16px', 
           display: 'flex', 
           flexWrap: 'wrap', 
           gap: '24px', 
           fontSize: '13px', 
-          color: '#e2e8f0',
+          color: 'var(--gov-text-secondary)',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#94a3b8' }}>Date:</span> <strong>{today}</strong>
+            <span>Date:</span> <strong style={{ color: 'var(--gov-text-primary)' }}>{today}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#94a3b8' }}>Last Login:</span> <strong>{currentOfficer.last_login || 'Today, 13:42:15 IST'}</strong>
+            <span>Last Login:</span> <strong style={{ color: 'var(--gov-text-primary)' }}>{currentOfficer.last_login || 'Today, 13:42:15 IST'}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#94a3b8' }}>Dept:</span> <strong>{currentOfficer.department_name || 'Economic Investigation Unit'}</strong>
+            <span>Dept:</span> <strong style={{ color: 'var(--gov-text-primary)' }}>{currentOfficer.department_name || 'Economic Investigation Unit'}</strong>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#94a3b8' }}>Clearance:</span> <span className="badge" style={{ backgroundColor: '#451a03', color: '#fde047', border: '1px solid #713f12' }}>TIER-1 RESTRICTED</span>
+            <span>Clearance:</span> <span className="badge badge-review">TIER-1 RESTRICTED</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: '#94a3b8' }}>MFA:</span> <span style={{ color: '#4ade80', fontWeight: 700 }}>✓ ACTIVE</span>
+            <span>MFA:</span> <span style={{ color: 'var(--status-active)', fontWeight: 700 }}><i className="fa-solid fa-check" style={{ marginRight: '4px' }}></i> ACTIVE</span>
           </div>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function DashboardPage() {
         <div className="stat-card stat-active" onClick={() => router.push('/cases')} style={{ cursor: 'pointer' }}>
           <div className="stat-title">ACTIVE CASES</div>
           <div className="stat-value">128</div>
-          <div className="stat-subtext"><span style={{ color: 'var(--gov-green)' }}>↑ 4 new</span> registered this month</div>
+          <div className="stat-subtext"><span style={{ color: 'var(--gov-green)' }}><i className="fa-solid fa-arrow-up" style={{ marginRight: '2px' }}></i> 4 new</span> registered this month</div>
         </div>
 
         <div className="stat-card" onClick={() => router.push('/documents')} style={{ cursor: 'pointer' }}>
@@ -117,7 +117,7 @@ export default function DashboardPage() {
         <div className="stat-card stat-warning" onClick={() => router.push('/documents')} style={{ cursor: 'pointer' }}>
           <div className="stat-title">PENDING REVIEWS</div>
           <div className="stat-value">17</div>
-          <div className="stat-subtext"><span style={{ color: 'var(--gov-saffron)' }}>⚠ Action required</span> for court filing</div>
+          <div className="stat-subtext"><span style={{ color: 'var(--gov-saffron)' }}><i className="fa-solid fa-triangle-exclamation" style={{ marginRight: '2px' }}></i> Action required</span> for court filing</div>
         </div>
 
         <div className="stat-card" onClick={() => router.push('/audit-trail')} style={{ cursor: 'pointer' }}>
@@ -129,7 +129,7 @@ export default function DashboardPage() {
         <div className="stat-card stat-danger" onClick={() => router.push('/security-center')} style={{ cursor: 'pointer' }}>
           <div className="stat-title">SECURITY ALERTS</div>
           <div className="stat-value">07</div>
-          <div className="stat-subtext"><span style={{ color: 'var(--status-critical)' }}>● Zero Breaches</span> • 7 Blocked</div>
+          <div className="stat-subtext"><span style={{ color: 'var(--status-critical)' }}>Zero Breaches</span> • 7 Blocked</div>
         </div>
       </div>
 
@@ -140,7 +140,7 @@ export default function DashboardPage() {
         <div className="gov-card">
           <div className="gov-card-header">
             <div className="gov-card-title">
-              <span>📁</span> Priority Investigation Cases
+              <i className="fa-solid fa-folder-open" style={{ color: 'var(--gov-navy-light)' }}></i> Priority Investigation Cases
             </div>
             <button className="btn btn-secondary btn-sm" onClick={() => router.push('/cases')}>
               View All Cases (10)
@@ -174,7 +174,7 @@ export default function DashboardPage() {
                       <td><span className="badge badge-active">{c.status}</span></td>
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/cases/${c.id}`)}>
-                          Open Workspace →
+                          Open Workspace <i className="fa-solid fa-arrow-right" style={{ marginLeft: '4px' }}></i>
                         </button>
                       </td>
                     </tr>
@@ -190,7 +190,7 @@ export default function DashboardPage() {
           <div className="gov-card" style={{ marginBottom: '20px' }}>
             <div className="gov-card-header" style={{ backgroundColor: 'var(--gov-saffron-light)' }}>
               <div className="gov-card-title" style={{ color: '#92400E' }}>
-                <span>⚠</span> Pending Evidentiary Reviews
+                <i className="fa-solid fa-triangle-exclamation"></i> Pending Evidentiary Reviews
               </div>
             </div>
             <div className="gov-card-body" style={{ padding: '12px' }}>
@@ -229,7 +229,7 @@ export default function DashboardPage() {
           <div className="gov-card">
             <div className="gov-card-header">
               <div className="gov-card-title">
-                <span>🛡</span> Security & Compliance UX
+                <i className="fa-solid fa-shield-halved" style={{ color: 'var(--gov-navy-light)' }}></i> Security & Compliance UX
               </div>
             </div>
             <div className="gov-card-body" style={{ fontSize: '12px', color: 'var(--gov-text-secondary)', lineHeight: 1.6 }}>
