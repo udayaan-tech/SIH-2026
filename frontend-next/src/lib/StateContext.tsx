@@ -46,8 +46,6 @@ export function StateProvider({ children }: { children: React.ReactNode }) {
       setCurrentOfficer(matched);
       localStorage.setItem('casevault_officer_id', officerId);
       localStorage.setItem('casevault_token', `TOKEN-${officerId}-${Date.now()}`);
-      // Refresh page to reset API headers
-      window.location.reload();
     }
   };
 

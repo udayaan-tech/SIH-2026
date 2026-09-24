@@ -13,7 +13,7 @@
   
   --gov-saffron: #ea580c; /* Richer saffron */
   --gov-saffron-light: #ffedd5;
-  --gov-green: #15803d; /* Deeper green */
+  --gov-green: #0A6E31; /* Original theme green */
   --gov-green-light: #dcfce7;
   
   --gov-bg: #f8fafc; /* Crisp, cool slate-50 background */
@@ -28,7 +28,7 @@
   --gov-border-light: #f1f5f9;
   
   /* Status Colors */
-  --status-active: #15803d;
+  --status-active: #0A6E31;
   --status-active-bg: #dcfce7;
   --status-review: #b45309;
   --status-review-bg: #fef3c7;

@@ -74,8 +74,8 @@ export const API = {
       if (!response.ok) {
         if (response.status === 401) {
           console.error("401 Unauthorized: Triggering session flush and relogin.");
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-            window.location.href = '/login';
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.location.href = '/';
           }
         }
         if (response.status === 403) {
