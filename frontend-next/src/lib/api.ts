@@ -1,5 +1,5 @@
 export const API = {
-  baseUrl: 'http://localhost:3000/api/v1',
+  baseUrl: 'http://localhost:8080/api/v1',
 
   async get(endpoint: string, queryParams?: any, options?: any) {
     let url = endpoint;
