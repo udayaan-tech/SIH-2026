@@ -1,0 +1,120 @@
+/**
+ * CASEVAULT — Accessibility Stylesheet (Section 21)
+ * Screen Reader Mode, High Contrast Mode, Font Resizing, Keyboard Focus
+ */
+
+/* 1. Visually Hidden / Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* 2. Enhanced Focus States for Keyboard Navigation */
+:focus-visible {
+  outline: 3px solid var(--gov-saffron);
+  outline-offset: 2px;
+}
+
+/* 3. Font Size Modifiers */
+body.font-size-sm {
+  font-size: 12px;
+}
+body.font-size-sm .stat-value {
+  font-size: 22px;
+}
+body.font-size-sm .page-title-group h1 {
+  font-size: 18px;
+}
+
+body.font-size-lg {
+  font-size: 16px;
+}
+body.font-size-lg .stat-value {
+  font-size: 30px;
+}
+body.font-size-lg .page-title-group h1 {
+  font-size: 24px;
+}
+body.font-size-lg .gov-nav-link {
+  font-size: 15px;
+}
+
+/* 4. High Contrast Theme */
+body.high-contrast-mode {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+}
+
+body.high-contrast-mode .gov-main-header,
+body.high-contrast-mode .gov-card,
+body.high-contrast-mode .stat-card,
+body.high-contrast-mode .doc-preview-pane,
+body.high-contrast-mode .doc-info-pane,
+body.high-contrast-mode .filter-toolbar,
+body.high-contrast-mode .modal-card {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #FFFF00 !important;
+}
+
+body.high-contrast-mode .gov-nav-bar,
+body.high-contrast-mode .gov-utility-bar,
+body.high-contrast-mode .gov-footer {
+  background-color: #000000 !important;
+  border-bottom: 2px solid #FFFF00 !important;
+}
+
+body.high-contrast-mode a,
+body.high-contrast-mode .gov-nav-link,
+body.high-contrast-mode .page-title-group h1,
+body.high-contrast-mode .stat-value,
+body.high-contrast-mode .gov-card-title {
+  color: #FFFF00 !important;
+}
+
+body.high-contrast-mode .btn-primary {
+  background-color: #FFFF00 !important;
+  color: #000000 !important;
+  border: 2px solid #FFFF00 !important;
+  font-weight: 800;
+}
+
+body.high-contrast-mode .btn-secondary {
+  background-color: #000000 !important;
+  color: #FFFFFF !important;
+  border: 2px solid #FFFFFF !important;
+}
+
+body.high-contrast-mode .gov-table th {
+  background-color: #1A1A1A !important;
+  color: #FFFF00 !important;
+  border-bottom: 2px solid #FFFF00 !important;
+}
+
+body.high-contrast-mode .gov-table td {
+  border-bottom: 1px solid #444444 !important;
+  color: #FFFFFF !important;
+}
+
+body.high-contrast-mode .badge {
+  border: 1px solid #FFFFFF !important;
+  background-color: #000000 !important;
+  color: #FFFF00 !important;
+}
+
+/* 5. Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
