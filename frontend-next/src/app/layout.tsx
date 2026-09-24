@@ -14,7 +14,7 @@ function GovShell({ children }: { children: React.ReactNode }) {
   const { currentOfficer, officers, switchToOfficer, toggleLanguage, applyFontSize, toggleHighContrast } = useAppState();
 
   // If we are on the public verification portal or login, do not render the shell
-  if (pathname.startsWith('/verify') || pathname === '/login') {
+  if (pathname.startsWith('/verify') || pathname === '/') {
     return <>{children}</>;
   }
 
@@ -40,7 +40,7 @@ function GovShell({ children }: { children: React.ReactNode }) {
             <button className="gov-utility-item" onClick={() => applyFontSize('lg')} title="Large Text">A+</button>
             <span className="gov-utility-divider">|</span>
             <button className="gov-utility-item" onClick={toggleHighContrast} title="Toggle High Contrast">
-              ◐ Contrast
+              <i className="fa-solid fa-circle-half-stroke" style={{ marginRight: '4px' }}></i> Contrast
             </button>
             <span className="gov-utility-divider">|</span>
             <button className="gov-utility-item" onClick={toggleLanguage} title="Switch Language">
@@ -59,9 +59,9 @@ function GovShell({ children }: { children: React.ReactNode }) {
 
       <div className="gov-main-header">
         <div className="gov-header-inner">
-          <div className="gov-identity-group" onClick={() => router.push('/')} style={{ cursor: 'pointer' }}>
+          <div className="gov-identity-group" onClick={() => router.push('/dashboard')} style={{ cursor: 'pointer' }}>
             <div className="gov-emblem-placeholder">
-              <span className="gov-emblem-icon">🏛</span>
+              <i className="fa-solid fa-building-columns gov-emblem-icon"></i>
               <span className="gov-emblem-text">SERVICES</span>
             </div>
             <div className="gov-titles">
@@ -90,11 +90,11 @@ function GovShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <button className="header-action-btn" title="View Notifications">
-              🔔<span className="badge-count">3</span>
+              <i className="fa-solid fa-bell"></i><span className="badge-count">3</span>
             </button>
 
-            <button className="header-action-btn" onClick={() => router.push('/login')} title="Log Out Session">
-              ⎋
+            <button className="header-action-btn" onClick={() => router.push('/')} title="Log Out Session">
+              <i className="fa-solid fa-right-from-bracket"></i>
             </button>
           </div>
         </div>
@@ -102,7 +102,7 @@ function GovShell({ children }: { children: React.ReactNode }) {
 
       <nav className="gov-nav-bar">
         <div className="gov-nav-inner">
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/'); }} className={`gov-nav-link ${pathname === '/' ? 'active' : ''}`}>Dashboard</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/dashboard'); }} className={`gov-nav-link ${pathname === '/dashboard' ? 'active' : ''}`}>Dashboard</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/cases'); }} className={`gov-nav-link ${pathname.startsWith('/cases') ? 'active' : ''}`}>Cases</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/documents'); }} className={`gov-nav-link ${pathname.startsWith('/documents') && !pathname.includes('cert') ? 'active' : ''}`}>Documents</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/evidence'); }} className={`gov-nav-link ${pathname.startsWith('/evidence') ? 'active' : ''}`}>Evidence Vault</a>
@@ -156,6 +156,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <title>CASEVAULT — Secure Digital Case & Document Management System | Government of India</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body className={inter.className}>
         <StateProvider>
