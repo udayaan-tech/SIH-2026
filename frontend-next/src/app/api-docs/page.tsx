@@ -25,7 +25,7 @@ export default function ApiDocsPage() {
     <div>
       <div className="page-header-bar">
         <div className="page-title-group">
-          <h1>CASEVAULT REST API v1 Specification & Security Baseline</h1>
+          <h1>Sakshya Setu (साक्ष्य सेतु) REST API v1 Specification & Security Baseline</h1>
           <div className="page-subtitle">
             Zero-Trust, defense-in-depth government integration interfaces and OWASP API security mitigations
           </div>
@@ -63,7 +63,7 @@ export default function ApiDocsPage() {
                 <thead>
                   <tr>
                     <th style={{ width: '35%' }}>OWASP Risk Category</th>
-                    <th>CASEVAULT Defense-in-Depth Implementation</th>
+                    <th>Sakshya Setu Defense-in-Depth Implementation</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -82,7 +82,7 @@ export default function ApiDocsPage() {
           <div className="gov-card" style={{ marginTop: '24px' }}>
             <div className="gov-card-header">
               <div className="gov-card-title">
-                <span>🌐</span> CASEVAULT API v1 Protected Endpoints
+                <span>🌐</span> Sakshya Setu API v1 Protected Endpoints
               </div>
               <span className="badge badge-info">BASE PATH: /api/v1</span>
             </div>

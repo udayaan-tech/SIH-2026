@@ -36,12 +36,15 @@ func main() {
 		log.Printf("⚠️  Case seed warning: %v", err)
 	}
 
-	// Initialize Merkle tree from existing leaves
+	// Initialize Merkle tree from existing leaves or seed demo evidence
 	merkleTree := crypto.NewMerkleTree()
+	if err := crypto.SeedDefaultEvidence(database, merkleTree); err != nil {
+		log.Printf("⚠️  Evidence seed warning: %v", err)
+	}
 	if err := merkleTree.LoadFromDB(database); err != nil {
 		log.Printf("⚠️  Merkle tree load warning: %v", err)
 	}
-	log.Printf("✅ Merkle tree loaded (%d leaves)", merkleTree.LeafCount())
+	log.Printf("✅ Merkle tree loaded (%d leaves, root: %s)", merkleTree.LeafCount(), merkleTree.Root())
 
 	// Initialize Storage Manager (MinIO with local vault fallback)
 	app.InitStorage(cfg)
@@ -77,7 +80,7 @@ func main() {
 			c.Header("Access-Control-Allow-Origin", origin)
 		}
 		c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, X-Request-ID, X-Officer-ID")
 		c.Header("Access-Control-Allow-Credentials", "true")
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(http.StatusNoContent)
@@ -110,6 +113,8 @@ func main() {
 	app.RegisterCustodyRoutes(router, database, cfg, authHandler)
 	app.RegisterAuditRoutes(router, database, cfg, authHandler)
 	app.RegisterRedactionRoutes(router, database, cfg, authHandler)
+	app.RegisterDashboardRoutes(router, database, cfg, authHandler)
+	app.RegisterAIIntelRoutes(router, database, cfg, authHandler)
 
 	// ═══════════════════════════════════════════════════
 	// DEV 1 — CRYPTO & INTEGRITY ENGINE
@@ -137,6 +142,29 @@ func main() {
 		merkle.GET("/root", cryptoHandler.GetMerkleRoot)
 		merkle.GET("/proof/:id", cryptoHandler.GetMerkleProof)
 	}
+
+	// ═══════════════════════════════════════════════════
+	// SECURITY, THREAT TELEMETRY & ATTACK SIMULATION (USP DEMO)
+	// ═══════════════════════════════════════════════════
+	security := router.Group("/api/v1/security")
+	security.Use(authHandler.AuthRequired())
+	{
+		security.GET("/overview", cryptoHandler.GetSecurityOverview)
+		security.POST("/scan-integrity", cryptoHandler.ScanIntegrity)
+		if cfg.Environment != "production" {
+			security.POST("/simulate-tamper", cryptoHandler.SimulateTamperDirect)
+			security.POST("/restore-integrity", cryptoHandler.RestoreIntegrity)
+		}
+	}
+
+	// ═══════════════════════════════════════════════════
+	// PUBLIC COURTROOM VERIFICATION (NO AUTH REQUIRED)
+	// ═══════════════════════════════════════════════════
+	pub := router.Group("/api/v1/public")
+	{
+		pub.GET("/verify/:hash", cryptoHandler.PublicVerifyHash)
+	}
+	router.GET("/api/v1/verify/:hash", cryptoHandler.PublicVerifyHash)
 
 	// ═══════════════════════════════════════════════════
 	// START SERVER

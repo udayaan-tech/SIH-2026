@@ -12,6 +12,7 @@ export default function DocumentViewerPage() {
   const { language } = useAppState();
 
   const [currentDoc, setCurrentDoc] = useState<any>(null);
+  const [custodyHandoffs, setCustodyHandoffs] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [tamperedState, setTamperedState] = useState(false);
@@ -23,6 +24,13 @@ export default function DocumentViewerPage() {
       try {
         const res = await API.get(`/documents/${docId}`);
         setCurrentDoc(res.data);
+
+        try {
+          const chainRes = await API.get(`/custody/chain/${docId}`);
+          if (chainRes?.data?.total_handoffs !== undefined) {
+            setCustodyHandoffs(chainRes.data.total_handoffs);
+          }
+        } catch (_) {}
       } catch (e: any) {
         setError(e.message || 'Failed to load document');
       } finally {
@@ -188,7 +196,16 @@ export default function DocumentViewerPage() {
             </div>
             <div className="info-item">
               <div className="info-label">Chain of Custody</div>
-              <div className="info-value">3 handoffs completed</div>
+              <div className="info-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>{custodyHandoffs} statutory handoff{custodyHandoffs === 1 ? '' : 's'}</span>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '10px', padding: '1px 6px', height: 'auto' }}
+                  onClick={() => router.push('/evidence')}
+                >
+                  View Ledger →
+                </button>
+              </div>
             </div>
             <div className="info-item">
               <div className="info-label">Classification</div>

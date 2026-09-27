@@ -26,7 +26,7 @@ export default function CasesPage() {
     setIsLoading(true);
     try {
       const res = await API.get(`/cases?search=${encodeURIComponent(search)}&status=${status}&department=${department}&priority=${priority}`);
-      setCases(res.data || []);
+      setCases(res.data?.cases || []);
     } catch (e) {
       console.error('Error fetching cases:', e);
     } finally {
@@ -65,7 +65,7 @@ export default function CasesPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `CASEVAULT_Case_Registry_${new Date().toISOString().substring(0, 10)}.csv`;
+    a.download = `SakshyaSetu_Case_Registry_${new Date().toISOString().substring(0, 10)}.csv`;
     a.click();
   };
 
@@ -80,10 +80,10 @@ export default function CasesPage() {
         </div>
         <div className="page-actions">
           <button className="btn btn-secondary btn-sm" onClick={exportCasesCsv}>
-            📥 Export Report
+            <i className="fa-solid fa-download" style={{ marginRight: '6px' }}></i> Export Report
           </button>
           <button className="btn btn-primary btn-sm" onClick={() => router.push('/cases/new')}>
-            + Create New Case
+            <i className="fa-solid fa-plus" style={{ marginRight: '6px' }}></i> Create New Case
           </button>
         </div>
       </div>
@@ -136,7 +136,7 @@ export default function CasesPage() {
       <div className="gov-card">
         <div className="gov-card-header">
           <div className="gov-card-title">
-            <span>⚖</span> Registered Government Investigation Cases (<span id="cases-count-badge">{cases.length}</span>)
+            <i className="fa-solid fa-scale-balanced" style={{ color: 'var(--gov-navy-light)' }}></i> Registered Government Investigation Cases (<span id="cases-count-badge">{cases.length}</span>)
           </div>
         </div>
         <div className="table-responsive">
@@ -194,7 +194,7 @@ export default function CasesPage() {
                       <td style={{ fontSize: '12px', color: 'var(--gov-text-muted)' }}>{c.created_at ? c.created_at.substring(0, 10) : '2026-02-14'}</td>
                       <td>
                         <button className="btn btn-secondary btn-sm" onClick={() => router.push(`/cases/${c.id}`)}>
-                          Open Workspace →
+                          Open Workspace <i className="fa-solid fa-arrow-right" style={{ marginLeft: '4px' }}></i>
                         </button>
                       </td>
                     </tr>

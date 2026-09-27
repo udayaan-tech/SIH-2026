@@ -41,7 +41,7 @@ export default function DocumentsPage() {
     setIsLoading(true);
     try {
       const res = await API.get(`/documents?search=${encodeURIComponent(search)}&documentType=${docType}&caseId=${caseId}&verificationStatus=${verifStatus}`);
-      setDocs(res.data || []);
+      setDocs(res.data?.documents || []);
     } catch (e) {
       console.error('Error fetching documents:', e);
     } finally {
@@ -89,7 +89,7 @@ export default function DocumentsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `CASEVAULT_DEC_${id}.txt`;
+      a.download = `SakshyaSetu_DEC_${id}.txt`;
       a.click();
     } catch (e) {
       console.error('Download error:', e);

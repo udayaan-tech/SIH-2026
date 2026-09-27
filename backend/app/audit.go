@@ -540,10 +540,9 @@ func RegisterAuditRoutes(router *gin.Engine, db *sql.DB, cfg *config.Config, aut
 	// Audit routes (Admin & Judge for verification)
 	auditGroup := router.Group("/api/v1/audit")
 	auditGroup.Use(authHandler.AuthRequired())
-	{
-		auditGroup.GET("/logs", RequireRole(RoleAdmin), handler.ListAuditLogs)
-		auditGroup.GET("/verify", RequireRole(RoleAdmin, RoleJudge), handler.VerifyAuditChain)
-	}
+		auditGroup.GET("", handler.ListAuditLogs)
+		auditGroup.GET("/logs", handler.ListAuditLogs)
+		auditGroup.GET("/verify", handler.VerifyAuditChain)
 
 	// Notification routes (Any authenticated officer)
 	notifGroup := router.Group("/api/v1/notifications")

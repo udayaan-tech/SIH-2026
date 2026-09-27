@@ -48,7 +48,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `CASEVAULT_${currentReport.reportName.replace(/\s+/g, '_')}_${new Date().toISOString().substring(0, 10)}.csv`;
+    a.download = `SakshyaSetu_${currentReport.reportName.replace(/\s+/g, '_')}_${new Date().toISOString().substring(0, 10)}.csv`;
     a.click();
   };
 

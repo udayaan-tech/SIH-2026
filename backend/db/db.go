@@ -75,8 +75,11 @@ func runMigrations(db *sql.DB) error {
 		merkle_leaf_id INTEGER,
 		classification VARCHAR(30) DEFAULT 'CONFIDENTIAL',
 		uploaded_by UUID REFERENCES users(id),
+		ocr_text TEXT,
 		created_at TIMESTAMPTZ DEFAULT NOW()
 	);
+
+	ALTER TABLE documents ADD COLUMN IF NOT EXISTS ocr_text TEXT;
 
 	CREATE TABLE IF NOT EXISTS custody_events (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -90,6 +93,11 @@ func runMigrations(db *sql.DB) error {
 		notes TEXT,
 		transferred_at TIMESTAMPTZ DEFAULT NOW()
 	);
+
+	ALTER TABLE custody_events ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'PENDING';
+	ALTER TABLE custody_events ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+	ALTER TABLE custody_events ADD COLUMN IF NOT EXISTS action_type VARCHAR(50) DEFAULT 'TRANSFERRED';
+	ALTER TABLE custody_events ADD COLUMN IF NOT EXISTS storage_location VARCHAR(255);
 
 	CREATE TABLE IF NOT EXISTS notifications (
 		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

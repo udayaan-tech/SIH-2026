@@ -14,7 +14,7 @@ function GovShell({ children }: { children: React.ReactNode }) {
   const { currentOfficer, officers, switchToOfficer, toggleLanguage, applyFontSize, toggleHighContrast } = useAppState();
 
   // If we are on the public verification portal or login, do not render the shell
-  if (pathname.startsWith('/verify') || pathname === '/login') {
+  if (pathname.startsWith('/verify') || pathname === '/') {
     return <>{children}</>;
   }
 
@@ -33,20 +33,19 @@ function GovShell({ children }: { children: React.ReactNode }) {
               Screen Reader Access
             </button>
           </div>
-          <div className="gov-utility-right">
-            <span style={{ fontSize: '11px', color: '#94A3B8' }}>Text Size:</span>
-            <button className="gov-utility-item" onClick={() => applyFontSize('sm')} title="Small Text">A-</button>
-            <button className="gov-utility-item" onClick={() => applyFontSize('md')} title="Normal Text">A</button>
-            <button className="gov-utility-item" onClick={() => applyFontSize('lg')} title="Large Text">A+</button>
-            <span className="gov-utility-divider">|</span>
+          <div className="gov-utility-right" style={{ gap: '16px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--gov-text-muted)' }}>Text Size:</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button className="gov-utility-item" onClick={() => applyFontSize('sm')} title="Small Text">A-</button>
+              <button className="gov-utility-item" onClick={() => applyFontSize('md')} title="Normal Text">A</button>
+              <button className="gov-utility-item" onClick={() => applyFontSize('lg')} title="Large Text">A+</button>
+            </div>
             <button className="gov-utility-item" onClick={toggleHighContrast} title="Toggle High Contrast">
-              ◐ Contrast
+              <i className="fa-solid fa-circle-half-stroke" style={{ marginRight: '4px' }}></i> Contrast
             </button>
-            <span className="gov-utility-divider">|</span>
             <button className="gov-utility-item" onClick={toggleLanguage} title="Switch Language">
               हिंदी | English
             </button>
-            <span className="gov-utility-divider">|</span>
             <button className="gov-utility-item" onClick={() => (window as any).startDemoGuide?.()} title="Start Interactive Demo">
               Help
             </button>
@@ -59,16 +58,16 @@ function GovShell({ children }: { children: React.ReactNode }) {
 
       <div className="gov-main-header">
         <div className="gov-header-inner">
-          <div className="gov-identity-group" onClick={() => router.push('/')} style={{ cursor: 'pointer' }}>
+          <div className="gov-identity-group" onClick={() => router.push('/dashboard')} style={{ cursor: 'pointer' }}>
             <div className="gov-emblem-placeholder">
-              <span className="gov-emblem-icon">🏛</span>
+              <i className="fa-solid fa-building-columns gov-emblem-icon"></i>
               <span className="gov-emblem-text">SERVICES</span>
             </div>
             <div className="gov-titles">
               <div className="gov-org-name">National Digital Investigation Services</div>
               <div className="gov-dept-name">Ministry of Home & Legal Affairs Division</div>
               <div className="gov-app-name">
-                <strong>CASEVAULT</strong> — Secure Digital Case & Document Management System
+                <strong>SAKSHYA SETU (साक्ष्य सेतु)</strong> — Electronic Evidence & Statutory Custody Platform
               </div>
             </div>
           </div>
@@ -77,24 +76,20 @@ function GovShell({ children }: { children: React.ReactNode }) {
             <div className="officer-badge-card">
               <div className="officer-avatar">{currentOfficer?.full_name?.charAt(0) || 'A'}</div>
               <div className="officer-meta">
-                <div className="officer-name">{currentOfficer?.full_name || 'A. Sharma'}</div>
+                <div className="officer-name" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  {currentOfficer?.full_name || 'A. Sharma'}
+                  <i className="fa-solid fa-caret-down" style={{ fontSize: '10px', color: 'var(--gov-text-muted)' }}></i>
+                </div>
                 <div className="officer-dept-id">{currentOfficer?.officer_id} • {currentOfficer?.department}</div>
-                <select className="role-switcher-select" value={currentOfficer?.officer_id || ''} onChange={(e) => switchToOfficer(e.target.value)}>
-                  {officers.map(o => (
-                    <option key={o.officer_id} value={o.officer_id}>
-                      {o.full_name} ({o.role_id})
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 
             <button className="header-action-btn" title="View Notifications">
-              🔔<span className="badge-count">3</span>
+              <i className="fa-solid fa-bell"></i><span className="badge-count">3</span>
             </button>
 
-            <button className="header-action-btn" onClick={() => router.push('/login')} title="Log Out Session">
-              ⎋
+            <button className="header-action-btn" onClick={() => router.push('/')} title="Log Out Session">
+              <i className="fa-solid fa-right-from-bracket"></i>
             </button>
           </div>
         </div>
@@ -102,17 +97,13 @@ function GovShell({ children }: { children: React.ReactNode }) {
 
       <nav className="gov-nav-bar">
         <div className="gov-nav-inner">
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/'); }} className={`gov-nav-link ${pathname === '/' ? 'active' : ''}`}>Dashboard</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/dashboard'); }} className={`gov-nav-link ${pathname === '/dashboard' ? 'active' : ''}`}>Dashboard</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/cases'); }} className={`gov-nav-link ${pathname.startsWith('/cases') ? 'active' : ''}`}>Cases</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/documents'); }} className={`gov-nav-link ${pathname.startsWith('/documents') && !pathname.includes('cert') ? 'active' : ''}`}>Documents</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/evidence'); }} className={`gov-nav-link ${pathname.startsWith('/evidence') ? 'active' : ''}`}>Evidence Vault</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/ai-search'); }} className={`gov-nav-link ${pathname.startsWith('/ai-search') ? 'active' : ''}`}>AI Search</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/ai-intel'); }} className={`gov-nav-link ${pathname.startsWith('/ai-intel') ? 'active' : ''}`}>AI Intelligence</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/audit-trail'); }} className={`gov-nav-link ${pathname.startsWith('/audit-trail') ? 'active' : ''}`}>Audit Trail</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/access-control'); }} className={`gov-nav-link ${pathname.startsWith('/access-control') ? 'active' : ''}`}>Access Control</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/documents'); }} className={`gov-nav-link ${pathname.startsWith('/documents') && !pathname.includes('cert') ? 'active' : ''}`}>Vault</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/evidence'); }} className={`gov-nav-link ${pathname.startsWith('/evidence') ? 'active' : ''}`}>Evidence</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/ai-search'); }} className={`gov-nav-link ${pathname.startsWith('/ai-') ? 'active' : ''}`}>AI Hub</a>
           <a href="#" onClick={(e) => { e.preventDefault(); router.push('/reports'); }} className={`gov-nav-link ${pathname.startsWith('/reports') ? 'active' : ''}`}>Reports</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/security-center'); }} className={`gov-nav-link ${pathname.startsWith('/security-center') ? 'active' : ''}`}>Security</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/api-docs'); }} className={`gov-nav-link ${pathname.startsWith('/api-docs') ? 'active' : ''}`}>API Docs</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); router.push('/security-center'); }} className={`gov-nav-link ${['/security-center', '/audit-trail', '/access-control', '/api-docs'].some(p => pathname.startsWith(p)) ? 'active' : ''}`}>System Admin</a>
         </div>
       </nav>
 
@@ -124,12 +115,12 @@ function GovShell({ children }: { children: React.ReactNode }) {
         <div className="gov-footer-inner">
           <div className="gov-footer-top">
             <div>
-              <div className="gov-footer-heading">CASEVAULT Platform</div>
+              <div className="gov-footer-heading">Sakshya Setu (साक्ष्य सेतु) Platform</div>
               <p style={{ fontSize: '12px', color: '#94A3B8', lineHeight: 1.6, marginBottom: '8px' }}>
                 National Digital Investigation Services (NDIS). A production-quality prototype platform engineered for lawful evidentiary governance, digital forensics, and tamper-evident custody tracking.
               </p>
               <div style={{ fontSize: '11px', color: '#64748B' }}>
-                Complies with Section 65B of Indian Evidence Act & IT Act 2000.
+                Complies with Bharatiya Sakshya Adhiniyam 2023 (Sec 63/65B) & BNSS 2023 Sec 105.
               </div>
             </div>
             <div>
@@ -143,7 +134,7 @@ function GovShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="gov-footer-bottom">
             <div>© 2026 National Digital Investigation Services (NDIS), Government of India. Prototype Demonstration Platform.</div>
-            <div>Last Updated: 23 September 2026 | FIPS 180-4 SHA-256 Verified</div>
+            <div>Last Updated: 27 September 2026 | FIPS 180-4 SHA-256 Verified</div>
           </div>
         </div>
       </footer>
@@ -155,7 +146,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <title>CASEVAULT — Secure Digital Case & Document Management System | Government of India</title>
+        <title>Sakshya Setu (साक्ष्य सेतु) — Statutory Electronic Evidence & Custody Management System | Government of India</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
       <body className={inter.className}>
         <StateProvider>
