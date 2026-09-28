@@ -12,12 +12,12 @@ export default function DemoGuideOverlay() {
     {
       title: '1. Secure Authentication',
       desc: 'Start by logging in using the smart card/badge credentials. Notice the NDIS ecosystem.',
-      action: () => router.push('/login')
+      action: () => router.push('/')
     },
     {
       title: '2. Officer Dashboard',
       desc: 'The main dashboard provides an overview of open cases, integrity alerts, and blockchain network status.',
-      action: () => router.push('/')
+      action: () => router.push('/dashboard')
     },
     {
       title: '3. Register a New FIR (POCSO)',

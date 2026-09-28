@@ -1,3 +1,15 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Next.js & Build Output
+.next/
+*/.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
 # Binaries
 backend/nyay-backend
 nyay-backend
@@ -6,14 +18,14 @@ nyay-backend
 *.so
 *.dylib
 
-# Storage Vault
+# Storage Vault & Generated Keys
 backend/vault/
 vault/
-
-# Generated keys
 backend/keys/
 keys/
 
-# Logs & temp
+# Environment and Logs
+.env
+.env*.local
 *.log
 .DS_Store

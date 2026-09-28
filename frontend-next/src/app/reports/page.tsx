@@ -13,16 +13,13 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    generateReport();
-  }, []);
-
-  const generateReport = async () => {
+  const generateReport = async (overrideType?: string) => {
+    const targetType = overrideType || reportType;
     setIsLoading(true);
     setError('');
     setCurrentReport(null);
     try {
-      const res = await API.post('/reports/generate', { reportType });
+      const res = await API.post('/reports/generate', { reportType: targetType });
       setCurrentReport(res.data);
     } catch (e: any) {
       setError(e.message || 'Failed to generate report');
@@ -30,6 +27,10 @@ export default function ReportsPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    generateReport('case_status');
+  }, []);
 
   const exportCsv = () => {
     if (!currentReport || !currentReport.tableData) return;
@@ -68,7 +69,11 @@ export default function ReportsPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '14px', alignItems: 'flex-end' }}>
           <div>
             <label className="filter-label">Statutory Report Type</label>
-            <select className="form-control" style={{ width: '100%' }} value={reportType} onChange={e => setReportType(e.target.value)}>
+            <select className="form-control" style={{ width: '100%' }} value={reportType} onChange={e => {
+              const val = e.target.value;
+              setReportType(val);
+              generateReport(val);
+            }}>
               <option value="case_status">Case Status & Lifecycle Report</option>
               <option value="doc_activity">Document Activity & Verification Audit</option>
               <option value="evidence_chain">Evidence Vault & Chain-of-Custody Log</option>
@@ -96,7 +101,7 @@ export default function ReportsPage() {
           </div>
 
           <div>
-            <button className="btn btn-primary" onClick={generateReport}>
+            <button className="btn btn-primary" onClick={() => generateReport()}>
               [ Generate Report ]
             </button>
           </div>

@@ -115,6 +115,7 @@ func main() {
 	app.RegisterRedactionRoutes(router, database, cfg, authHandler)
 	app.RegisterDashboardRoutes(router, database, cfg, authHandler)
 	app.RegisterAIIntelRoutes(router, database, cfg, authHandler)
+	app.RegisterReportRoutes(router, database, cfg, authHandler)
 
 	// ═══════════════════════════════════════════════════
 	// DEV 1 — CRYPTO & INTEGRITY ENGINE
