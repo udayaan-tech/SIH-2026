@@ -84,21 +84,21 @@ async function runCustodyVerification() {
   // Step 3: Identify exhibit currently held by IO
   const docsRes = await get('http://localhost:8080/api/v1/documents', io.token);
   const docs = docsRes.data.data?.documents || [];
-  const targetDoc = docs.find(d => d.title.includes('CCTV')) || docs[0];
+  const targetDoc = docs.find(d => d.title.includes('Bank_Transaction_Report')) || docs[0];
   console.log(`[EXHIBIT] Selected: "${targetDoc.title}" (Hash: ${targetDoc.sha256_hash.substring(0, 16)}...)`);
 
   // Step 4: Dual-Handshake Step 1 (Sender Release & Sign)
-  console.log('\n--- EXECUTING DUAL HANDSHAKE STEP 1 (SENDER RELEASE) ---');
+  console.log('\n--- EXECUTING DUAL HANDSHAKE STEP 1 (FORENSIC RELEASE & SIGN) ---');
   const transferPayload = {
     document_id: targetDoc.id,
-    to_officer_id: fsl.user.id,
-    to_agency: 'FSL',
-    action_type: 'TRANSFERRED',
-    storage_location: 'CFSL Banking Cyber Forensics Cell, New Delhi',
-    notes: 'Official requisition under Section 105 BNSS for ledger transaction trace and shell entity forensic carve.'
+    to_officer_id: io.user.id,
+    to_agency: 'Delhi Police',
+    action_type: 'RETURNED_AFTER_ANALYSIS',
+    storage_location: 'Central Evidence Malkhana, Tilak Marg, New Delhi',
+    notes: 'Completed forensic extraction and ledger transaction carve under Section 63 BSA. Returning exhibit to Lead IO.'
   };
 
-  const transferRes = await post('http://localhost:8080/api/v1/custody/transfer', transferPayload, io.token);
+  const transferRes = await post('http://localhost:8080/api/v1/custody/transfer', transferPayload, fsl.token);
   console.log(`[STEP 1 RESULT] HTTP ${transferRes.status}:`, transferRes.data.success ? 'SUCCESS' : 'FAILED');
   if (!transferRes.data.success) {
     console.error('Error detail:', transferRes.data.error);
@@ -110,8 +110,8 @@ async function runCustodyVerification() {
   console.log(`  Status:             ${transferData.status}`);
 
   // Step 5: Dual-Handshake Step 2 (Recipient Inspection & Sign-Off)
-  console.log('\n--- EXECUTING DUAL HANDSHAKE STEP 2 (RECIPIENT SIGN-OFF) ---');
-  const pendingRes = await get('http://localhost:8080/api/v1/custody/pending', fsl.token);
+  console.log('\n--- EXECUTING DUAL HANDSHAKE STEP 2 (LEAD IO INSPECTION & SIGN-OFF) ---');
+  const pendingRes = await get('http://localhost:8080/api/v1/custody/pending', io.token);
   const incoming = pendingRes.data.data?.incoming || [];
   const targetPending = incoming.find(p => p.id === transferData.transfer_id);
 
@@ -119,9 +119,9 @@ async function runCustodyVerification() {
     console.error('❌ Failed: Handshake transfer not visible in recipient incoming queue!');
     return;
   }
-  console.log(`[INCOMING QUEUE] ✓ Verified pending handoff in Dr. Sunita Mehra queue (${targetPending.document_title})`);
+  console.log(`[INCOMING QUEUE] ✓ Verified pending handoff in Inspector Rajesh Kumar queue (${targetPending.document_title})`);
 
-  const acceptRes = await post(`http://localhost:8080/api/v1/custody/transfer/accept/${transferData.transfer_id}`, {}, fsl.token);
+  const acceptRes = await post(`http://localhost:8080/api/v1/custody/transfer/accept/${transferData.transfer_id}`, {}, io.token);
   console.log(`[STEP 2 RESULT] HTTP ${acceptRes.status}:`, acceptRes.data.success ? 'SUCCESS' : 'FAILED');
   const acceptData = acceptRes.data.data;
   console.log(`  Receiver Signature: ${acceptData.receiver_signature}`);

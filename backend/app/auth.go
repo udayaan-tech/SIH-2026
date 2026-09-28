@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/subtle"
 	"crypto/x509"
 	"database/sql"
 	"encoding/json"
@@ -366,7 +367,8 @@ func (h *AuthHandler) MFAVerify(c *gin.Context) {
 			return
 		}
 
-		if session.OTP != req.OTP && !isMasterOTP {
+		otpMatch := subtle.ConstantTimeCompare([]byte(session.OTP), []byte(req.OTP)) == 1
+		if !otpMatch && !isMasterOTP {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"data":    nil,

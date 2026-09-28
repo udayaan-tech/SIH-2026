@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
@@ -234,7 +235,7 @@ func (h *Handler) SimulateTamper(c *gin.Context) {
 
 	// Now verify — this WILL fail because stored hash ≠ Merkle leaf hash
 	merkleLeafHash, _ := h.merkle.GetLeaf(leafPosition)
-	merkleValid := (tampered == merkleLeafHash)
+	merkleValid := subtle.ConstantTimeCompare([]byte(tampered), []byte(merkleLeafHash)) == 1
 
 	h.logAudit(c, "TAMPER_SIMULATED", "document", docID, tampered)
 

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -168,20 +171,45 @@ func main() {
 	router.GET("/api/v1/verify/:hash", cryptoHandler.PublicVerifyHash)
 
 	// ═══════════════════════════════════════════════════
-	// START SERVER
+	// START PRODUCTION-GRADE HARDENED HTTP SERVER
 	// ═══════════════════════════════════════════════════
 	port := cfg.Port
 	if port == "" {
 		port = "8080"
 	}
-	log.Printf("🚀 Nyay Suraksha Backend running on :%s", port)
-	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("❌ Server failed: %v", err)
-		os.Exit(1)
+
+	srv := &http.Server{
+		Addr:              ":" + port,
+		Handler:           router,
+		ReadTimeout:       15 * time.Second,  // Slowloris defense
+		ReadHeaderTimeout: 5 * time.Second,   // Slow header defense
+		WriteTimeout:      30 * time.Second,  // Hanging socket prevention
+		IdleTimeout:       120 * time.Second, // Keepalive socket timeout
+		MaxHeaderBytes:    1 << 20,           // 1 MB max header
 	}
+
+	go func() {
+		log.Printf("🚀 Sakshya Setu Production-Grade Backend running on :%s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("❌ Server failed: %v", err)
+		}
+	}()
+
+	// Graceful zero-downtime shutdown listener
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("🛑 Security Notice: Initiating graceful server termination...")
+
+	drainCtx, drainCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer drainCancel()
+	if err := srv.Shutdown(drainCtx); err != nil {
+		log.Fatalf("❌ Forcefully terminated: %v", err)
+	}
+	log.Println("✅ Sakshya Setu Core cleanly exited.")
 }
 
-// securityHeaders adds hardened HTTP response headers (F-048, F-049)
+// securityHeaders adds hardened HTTP response headers (F-048, F-049, Military/Banking Grade)
 func securityHeaders(cfg *config.Config) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -189,7 +217,16 @@ func securityHeaders(cfg *config.Config) gin.HandlerFunc {
 		c.Header("X-XSS-Protection", "1; mode=block")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Header("Content-Security-Policy", "default-src 'self'")
-		c.Header("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		c.Header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+		c.Header("Cross-Origin-Opener-Policy", "same-origin")
+		c.Header("Cross-Origin-Resource-Policy", "same-origin")
+		
+		// Prevent caching of evidentiary payloads, tokens, and investigation records
+		c.Header("Cache-Control", "no-store, no-cache, must-revalidate, private")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
+		c.Header("Server", "SakshyaSetu-Secured")
+
 		if cfg.Environment == "production" {
 			c.Header("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
 		}

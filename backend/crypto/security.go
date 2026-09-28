@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"log"
@@ -149,7 +150,7 @@ func (h *Handler) ScanIntegrity(c *gin.Context) {
 		}
 		scanned++
 
-		isMatch := leafHash.Valid && docHash == leafHash.String
+		isMatch := leafHash.Valid && subtle.ConstantTimeCompare([]byte(docHash), []byte(leafHash.String)) == 1
 		if !isMatch {
 			mismatches++
 			details = append(details, gin.H{

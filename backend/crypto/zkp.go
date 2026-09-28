@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 )
@@ -52,5 +53,5 @@ func VerifyZKP(documentHash string, salt string, expectedCommitment string) bool
 		return false
 	}
 	
-	return computedCommitment == expectedCommitment
+	return subtle.ConstantTimeCompare([]byte(computedCommitment), []byte(expectedCommitment)) == 1
 }

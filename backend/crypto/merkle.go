@@ -1,6 +1,7 @@
 package crypto
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"fmt"
 	"math"
@@ -101,7 +102,7 @@ func (mt *MerkleTree) VerifyLeaf(position int, hash string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return stored == hash, nil
+	return subtle.ConstantTimeCompare([]byte(stored), []byte(hash)) == 1, nil
 }
 
 // ProofNode represents one step in a Merkle inclusion proof.
@@ -174,7 +175,7 @@ func VerifyProof(leafHash string, proof []ProofNode, expectedRoot string) bool {
 		currentHash = combined
 	}
 
-	return currentHash == expectedRoot
+	return subtle.ConstantTimeCompare([]byte(currentHash), []byte(expectedRoot)) == 1
 }
 
 // rebuild recomputes the entire tree from leaves up to root.

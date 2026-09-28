@@ -4,20 +4,23 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
-// Connect establishes a connection pool to PostgreSQL.
+// Connect establishes a hardened, high-throughput connection pool to PostgreSQL.
 func Connect(databaseURL string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Connection pool settings
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	// Production-grade connection pool settings
+	db.SetMaxOpenConns(50)                  // Support up to 50 concurrent active queries
+	db.SetMaxIdleConns(15)                  // Keep 15 hot connections ready in the pool
+	db.SetConnMaxLifetime(30 * time.Minute) // Prevent stale zombie connections
+	db.SetConnMaxIdleTime(5 * time.Minute)  // Reclaim idle connections smoothly
 
 	// Verify connection
 	if err := db.Ping(); err != nil {
@@ -151,8 +154,12 @@ func runMigrations(db *sql.DB) error {
 	CREATE INDEX IF NOT EXISTS idx_documents_case_id ON documents(case_id);
 	CREATE INDEX IF NOT EXISTS idx_documents_hash ON documents(sha256_hash);
 	CREATE INDEX IF NOT EXISTS idx_custody_document ON custody_events(document_id);
+	CREATE INDEX IF NOT EXISTS idx_custody_status ON custody_events(status);
 	CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit_events(actor_id);
 	CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_events(target_id);
+	CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_events(created_at DESC);
+	CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_events(action);
+	CREATE INDEX IF NOT EXISTS idx_cases_status_created ON cases(status, created_at DESC);
 	CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
 	CREATE INDEX IF NOT EXISTS idx_merkle_document ON merkle_leaves(document_id);
 	`
